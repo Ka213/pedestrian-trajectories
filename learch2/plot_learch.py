@@ -16,7 +16,9 @@
 # PERFORMANCE OF THIS SOFTWARE.
 #
 #                                        Jim Mainprice on Sunday June 13 2018
-
+import sys
+#sys.path.insert(0,"C:/Users/Katharina/Documents/Studium/10Semester/Masterarbeit/DeepLearch/pyrieef")
+from examples.diffeo.demos_common_imports import *
 from pyrieef.geometry.workspace import *
 from pyrieef.geometry.differentiable_geometry import *
 import pyrieef.rendering.workspace_renderer as render
@@ -36,7 +38,7 @@ pixel_map = workspace.pixel_map(nb_points)
 np.random.seed(1)
 
 
-def show_map(s_w, t_w, path):
+def show_map():
     if show_result:
         viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True)
         viewer.draw_ws_img(costmap, interpolate="none")
@@ -81,23 +83,24 @@ for i in range(100):
             time_0 = time.time()
             path = converter.dijkstra_on_map(costmap, s[0], s[1], t[0], t[1])
         except Exception as e:
+            print("Exception")
             continue
         paths.append(path)
         starts.append(s_w)
         targets.append(t_w)
         print("took t : {} sec.".format(time.time() - time_0))
 
-    show_map(s_w, t_w, path)
+    show_map()
 
     l = Learch2D(costmap,paths,starts,targets, pixel_map)
     for i in range(10):
          l.one_step()
          costmap = l.costmap
-         show_map(s_w, t_w, path)
+         show_map()
 
     #l.solve()
     #costmap = l.costmap
-    #show_map(s_w, t_w, path)
+    #show_map()
 
 
 print(path)
