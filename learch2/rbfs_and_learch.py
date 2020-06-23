@@ -16,46 +16,46 @@
 # PERFORMANCE OF THIS SOFTWARE.
 #
 #                                        Jim Mainprice on Sunday June 13 2018
-import sys
 
+from src.pyrieef.pyrieef.learning.inverse_optimal_control import *
+from src.pyrieef.pyrieef.geometry.workspace import *
+from src.pyrieef.pyrieef.geometry.interpolation import *
+from src.pyrieef.pyrieef.graph.shortest_path import *
+import src.pyrieef.pyrieef.rendering.workspace_renderer as render
 from scipy.interpolate import Rbf
-
-sys.path.insert(0,"C:/Users/Katharina/Documents/Studium/10Semester/Masterarbeit/DeepLearch/pyrieef")
-from pyrieef.learning.inverse_optimal_control import *
-from pyrieef.geometry.differentiable_geometry import RadialBasisFunction
-from pyrieef.geometry.workspace import *
-from pyrieef.graph.shortest_path import *
-import pyrieef.rendering.workspace_renderer as render
 import numpy as np
 import time
 import matplotlib.pyplot as plt
 
 class Learch2D(Learch):
 
-    def __init__(self, costmap, paths, starts, targets, pixel_map):
+    def __init__(self, nb_points, centers, sigma, paths, starts, targets, pixel_map):
         Learch.__init__(self, len(paths))
 
-        self._nb_points = costmap.shape[0]
         self._loss_scalar = .8
         self._loss_stddev = .8
-        self.costmap = costmap
+
+        self.nb_points = nb_points
+        self.centers = centers
+        self.sigma = sigma
+        self.phi = get_phi(nb_points, centers, sigma)
         self.sample_trajectories = paths
         self.sample_starts = starts
         self.sample_targets = targets
-
-        self.loss_map = np.zeros((len(paths), costmap.shape[0], costmap.shape[1]))
-        self.d = []
+        self.w = np.ones(len(centers))
+        self.costmap = np.zeros((nb_points, nb_points))
+        self.loss_map = np.zeros((len(paths), nb_points, nb_points))
+        self.d = np.empty((3,0))
         self.pixel_map = pixel_map
         self.initialize_mydata()
 
     def initialize_mydata(self):
         for i, t in enumerate(self.sample_trajectories):
-            self.loss_map[i] = scaled_hamming_loss_map(t, self._nb_points, self._loss_scalar, self._loss_stddev)
+            self.loss_map[i] = scaled_hamming_loss_map(t, self.nb_points, self._loss_scalar, self._loss_stddev)
+        self.costmap = get_costmap(self.nb_points, self.centers, self.sigma, self.w)
 
     def planning(self):
-        self.d = []
-        i = 0
-        for trajectory in self.sample_trajectories:
+        for i, trajectory in enumerate(self.sample_trajectories):
 
             converter = CostmapToSparseGraph(self.costmap)
             converter.integral_cost = True
@@ -70,42 +70,44 @@ class Learch2D(Learch):
                 print("Exception")
                 continue
             g = get_gradient(self.costmap)
-            for x_1,x_2 in optimal_path:
-                self.d.append([x_1, x_2, self.costmap[x_1][x_2] + g[x_1][x_2]])
-            for x_1,x_2 in trajectory:
-                self.d.append([x_1, x_2, self.costmap[x_1][x_2] - g[x_1][x_2]])
-            i = i + 1
 
-    def supervised_learning(self, w_t):
-        C = np.asarray(np.transpose(self.d)[:][2])
-        phi = np.zeros((len(centers), nb_points, nb_points))
-        for j in range(len(centers)):
-            phi[j] = get_rbf(nb_points, centers[j], sigma, w_t[j])
-        Phi = np.ones((len(self.d), nb_rbfs**2))
-        for i, d in enumerate(self.d):
-            x_1 = d[0]
-            x_2 = d[1]
-            for j in range(len(centers)):
-                Phi[i][j] = phi[j][x_1][x_2]
-        w = linear_regression(Phi, C, w_t, 0.2, 0)
-        return w
+            x1 = np.asarray(np.transpose(optimal_path)[:][0])
+            x2 = np.asarray(np.transpose(optimal_path)[:][1])
+            d = np.vstack((x1, x2, self.costmap[x1,x2] + g[x1, x2]))
+            self.d = np.hstack((self.d, d))
+            x1 = np.asarray(np.transpose(trajectory)[:][0])
+            x2 = np.asarray(np.transpose(trajectory)[:][1])
+            d = np.vstack(
+                (x1, x2, self.costmap[x1, x2] + g[x1, x2]))
+            self.d = np.hstack((self.d, d))
 
-    def one_step(self,w_t):
+    def supervised_learning(self):
+        C = self.d[:][2]
+        x1 = self.d[:][0].astype(int)
+        x2 = self.d[:][1].astype(int)
+        Phi = self.phi[:, x1, x2].T
+        self.w = linear_regression(Phi, C, self.w, 6, 0)
+        self.costmap = get_costmap(self.nb_points, self.centers, self.sigma, self.w)
+
+    def one_step(self):
         self.planning()
-        w = self.supervised_learning(w_t)
-        return w
+        self.supervised_learning()
 
-    def solve(self, w):
+    def n_step(self, n):
+        for i in range(n):
+            self.one_step()
+            maps.append(self.costmap)
+        show_multiple_maps(maps, workspace)
+
+    def solve(self):
         old_c = copy.deepcopy(self.costmap)
         e_p = 1
         e_o = 1
-        while e_p < 60:
-            w = self.one_step(w)
-            print("w: ", w)
-            self.costmap = get_costmap(nb_points, centers, sigma, w)
+        while e_p < 1:
+            self.one_step()
+            print("w: ", self.w)
             maps.append(self.costmap)
-            #show_map(self.costmap, workspace)
-            e_p = e_p + 1 #(np.absolute(self.costmap-old_c)).sum()
+            e_p = (np.absolute(self.costmap-old_c)).sum()
             e_o = (np.absolute(self.costmap-original_costmap)).sum()
             print("error with previous: ", e_p)
             print("error with original: ", e_o)
@@ -137,7 +139,7 @@ def get_gradient(costmap):
     g = np.ones(costmap.shape)
     #g = np.gradient(costmap)
     # gradient fixed for now
-    return  g * 0.2 #g[o]
+    return  g * 0.5 #g[o]
 
 def show_map(costmap, workspace):
     if show_result:
@@ -162,33 +164,30 @@ def show_samples(costmap, starts, targets, paths, workspace):
 def show_multiple_maps(costmaps, workspace):
     if show_result:
         r = math.ceil(math.sqrt(len(costmaps)))
-        viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True, rows=r, cols=r)
+        c = math.ceil(len(costmaps) / r)
+        viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True, rows=r, cols=c)
         for i, costmap in enumerate(costmaps):
             viewer.set_drawing_axis(i)
             viewer.draw_ws_img(costmap, interpolate="none")
         viewer.show_once()
 
-def get_costmap(nb_points, centers, sigma, w):
-    for i, x0 in enumerate(centers):
-        rbf[i] = Scale(RadialBasisFunction(x0, sigma * np.eye(2)), w[i])
-    phi = SumOfTerms(rbf)
+def get_rbf(nb_points, center, sigma):
     X, Y = workspace.box.meshgrid(nb_points)
-    costmap = two_dimension_function_evaluation(X, Y, phi)
+    rbf = Rbf(center[0], center[1], 1, function='gaussian', epsilon=sigma)
+    map = rbf(X, Y)
 
-    return costmap
+    return map
 
-def get_rbf(nb_points, center, sigma, w):
-    X, Y = workspace.box.meshgrid(nb_points)
-    scipy_rbf = Rbf(center[0], center[1], w, function='gaussian', epsilon=sigma, norm='minkowski', p=10)
-    grid_rbf = scipy_rbf(X, Y)
-
-    return grid_rbf
-
-def sum_rbfs(nb_points, centers, sigma, w):
-    costmap = np.zeros((nb_points, nb_points))
+def get_phi(nb_points, centers, sigma):
+    rbfs = []
     for i, center in enumerate(centers):
-        grid_rbf = get_rbf(nb_points, center, sigma, w[i])
-        costmap = costmap + grid_rbf
+        rbfs.append(get_rbf(nb_points, center, sigma))
+    phi = np.stack(rbfs)
+
+    return phi
+
+def get_costmap(nb_points, centers, sigma, w):
+    costmap = np.tensordot(w, get_phi(nb_points, centers, sigma), axes=1)
 
     return costmap
 
@@ -198,8 +197,8 @@ show_result = True
 average_cost = False
 nb_points = 40
 nb_rbfs = 5
-sigma = 200
-nb_samples = 10
+sigma = 0.1
+nb_samples = 5
 
 workspace = Workspace()
 pixel_map = workspace.pixel_map(nb_points)
@@ -207,19 +206,12 @@ np.random.seed(1)
 
 #create costmap with rbfs
 w = np.random.random(nb_rbfs**2)
-print("weights: ", w)
-rbf = [None] * nb_rbfs**2
 centers = workspace.box.meshgrid_points(nb_rbfs)
-
-original_costmap = sum_rbfs(nb_points, centers, sigma, w)
+phi = get_phi(nb_points, centers, sigma)
+original_costmap = get_costmap(nb_points, centers, sigma, w)
 maps = [original_costmap]
 
-single_rbf = np.zeros((nb_rbfs**2, nb_points, nb_points))
-for i, c in enumerate(centers):
-    single_rbf[i] = get_rbf(nb_points, c, sigma, w[i])
-show_multiple_maps(single_rbf,workspace)
-sum = sum_rbfs(nb_points, centers, sigma, w)
-show_map(sum, workspace)
+#show_map(original_costmap, workspace)
 
 # Plan path
 converter = CostmapToSparseGraph(original_costmap, average_cost)
@@ -249,10 +241,5 @@ for i in range(nb_samples):
 show_samples(original_costmap, starts, targets, paths, workspace)
 
 #learn costs
-w_t = np.ones(nb_rbfs**2)
-costmap = get_costmap(nb_points, centers, sigma, w_t)
-maps.append(costmap)
-show_map(costmap, workspace)
-
-l = Learch2D(costmap, paths, starts, targets, pixel_map)
-l.solve(w_t)
+l = Learch2D(nb_points, centers, sigma, paths, starts, targets, pixel_map)
+l.n_step(20)
