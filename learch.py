@@ -85,6 +85,7 @@ class Learch2D(Learch):
         C = self.d[:][2]
         x1 = self.d[:][0].astype(int)
         x2 = self.d[:][1].astype(int)
+
         Phi = self.phi[:, x1, x2].T
         self.w = linear_regression(Phi, C, self.w, 6, 0)
         self.costmap = get_costmap(self.nb_points, self.centers, self.sigma, self.w)
@@ -132,7 +133,6 @@ def hamming_loss_map(trajectory, nb_points,
     occpancy_map = np.ones((nb_points, nb_points))
     for x_1, x_2 in trajectory:
         occpancy_map[x_1][x_2] = 0
-    print(occpancy_map[1][0])
     return occpancy_map
 
 def get_gradient(costmap):
