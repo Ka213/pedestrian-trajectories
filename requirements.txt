@@ -1,3 +1,15 @@
 --index-url https://pypi.python.org/simple/
 
 -e git+https://github.com/humans-to-robots-motion/pyrieef.git#egg=pyrieef
+
+numpy~=1.17.1
+scipy~=1.4.1
+h5py~=2.10.0
+matplotlib~=3.0.3
+tensorflow~=1.5.0
+scikit-image~=0.15.0
+tqdm~=4.46.1
+pyglet~=1.5.6
+six~=1.15.0
+sympy~=1.6
+setuptools~=28.8.0
