@@ -81,10 +81,10 @@ class Learch2D(Learch):
             x2 = np.asarray(np.transpose(optimal_path)[:][1])
             d = np.vstack((x1, x2, self.costmap[x1, x2] + g[x1, x2]))
             self.d = np.hstack((self.d, d))
+
             x1 = np.asarray(np.transpose(trajectory)[:][0])
             x2 = np.asarray(np.transpose(trajectory)[:][1])
-            d = np.vstack(
-                (x1, x2, self.costmap[x1, x2] + g[x1, x2]))
+            d = np.vstack((x1, x2, self.costmap[x1, x2] - g[x1, x2]))
             self.d = np.hstack((self.d, d))
 
     def supervised_learning(self):
@@ -103,6 +103,7 @@ class Learch2D(Learch):
 
     def n_step(self, n):
         for i in range(n):
+            print("run step :", i)
             self.one_step()
             maps.append(self.costmap)
         show_multiple_maps(maps, workspace)
