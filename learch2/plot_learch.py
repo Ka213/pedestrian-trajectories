@@ -25,12 +25,14 @@ from pyrieef.learning.inverse_optimal_control import *
 from learch2.learch import *
 from learch2.output import *
 
-show_result = True
 nb_points = 40
 nb_rbfs = 5
 sigma = 0.1
-nb_samples = 8
+nb_samples = 2
 nb_steps = 10
+
+# Path to current directory
+home = os.path.abspath(os.path.dirname(__file__))
 
 workspace = Workspace()
 pixel_map = workspace.pixel_map(nb_points)
@@ -46,9 +48,16 @@ starts, targets, paths = plan_paths(nb_samples, original_costmap, workspace)
 
 # Learn costmap
 l = Learch2D(nb_points, centers, sigma, paths, starts, targets, workspace)
-maps, optimal_paths = l.n_step(nb_steps)
+maps, optimal_paths, w = l.n_step(nb_steps)
+
 
 # Output learned costmaps
+show_multiple_weights(maps, w, workspace, starts=starts, targets=targets,
+                      paths=paths, optimal_paths=optimal_paths,
+                      directory=home + '/../figures/map_with_weights.png')
 show_multiple_maps(maps, workspace, starts=starts, targets=targets,
-                   paths=paths, optimal_paths=optimal_paths)
-show_multiple_maps([original_costmap, maps[-1]], workspace)
+                   paths=paths, optimal_paths=optimal_paths,
+                   directory=home + '/../figures/multiple_maps_with_trajectories.png')
+show_map(maps[-1], workspace, directory=home + '/../figures/map.png')
+show_multiple_maps([original_costmap, maps[-1]], workspace,
+                   directory=home + '/../figures/multiple_maps.png')
