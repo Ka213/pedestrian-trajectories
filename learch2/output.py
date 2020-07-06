@@ -236,7 +236,9 @@ def show_D(costmap, d, workspace,
         viewer.draw_ws_line_fill(trajectory, color=c)
         viewer.draw_ws_point(s_w, color=c)
         viewer.draw_ws_point(t_w, color=c)
+    viewer.remove_axis()
     viewer.set_drawing_axis(1)
+    viewer.remove_axis()
     # Optimal paths where cost have to be decreased
     viewer.draw_ws_img(costmap, interpolate="none")
     for k, (s_w, t_w, path) in enumerate(zip(starts, targets, optimal_paths)):
@@ -254,11 +256,9 @@ def show_D(costmap, d, workspace,
         s = pixel_map.grid_to_world(np.array((x_1, x_2)))
         if d_t > 0:
             viewer.set_drawing_axis(1)
-            viewer.draw_ws_point(s, color='b', shape='x')
         else:
             viewer.set_drawing_axis(0)
-            viewer.draw_ws_point(s, color='g', shape='x')
-        viewer.remove_axis()
+        viewer.draw_ws_point(s, color='r', shape='x')
     if show_result:
         viewer.show_once()
     else:
@@ -274,8 +274,9 @@ def plot_error_avg(error, nb_samples, nb_runs, directory):
     plt.ylabel('error')
     plt.xlabel('# of samples')
     plt.xticks(x)
-    y_stddev = np.std(error, axis=1)
-    plt.errorbar(x, y, yerr=y_stddev, capsize=2)
+    if nb_runs > 1:
+        y_stddev = np.std(error, axis=0)
+        plt.errorbar(x, y, yerr=y_stddev, capsize=2)
     plt.title(
         '\n'.join(wrap('error over different number of samples averaged '
                        'over {} different environments'.format(nb_runs), 60)))
