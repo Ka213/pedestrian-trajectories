@@ -218,6 +218,52 @@ def show_multiple_maps(costmaps, workspace, starts=None, targets=None, paths=Non
     else:
         viewer.save_figure(directory)
 
+def show_D(costmap, d, workspace,
+     starts, targets, paths, optimal_paths, directory=None):
+    """ Show a map with the indication where the costs have to be decreased along
+        the example and optimal trajectories
+    """
+    assert len(starts) == len(targets) == len(paths)
+    viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True, cols= 2)
+    pixel_map = workspace.pixel_map(costmap.shape[0])
+    # Example paths where cost have to be decreased
+    viewer.draw_ws_img(costmap, interpolate="none")
+    for k, (s_w, t_w, path) in enumerate(zip(starts, targets, paths)):
+        trajectory = [None] * len(path)
+        for l, p in enumerate(path):
+            trajectory[l] = pixel_map.grid_to_world(np.array(p))
+        c = cmap(0.8)
+        viewer.draw_ws_line_fill(trajectory, color=c)
+        viewer.draw_ws_point(s_w, color=c)
+        viewer.draw_ws_point(t_w, color=c)
+    viewer.set_drawing_axis(1)
+    # Optimal paths where cost have to be decreased
+    viewer.draw_ws_img(costmap, interpolate="none")
+    for k, (s_w, t_w, path) in enumerate(zip(starts, targets, optimal_paths)):
+        trajectory = [None] * len(path)
+        for l, p in enumerate(path):
+            trajectory[l] = pixel_map.grid_to_world(np.array(p))
+        c = cmap(0.2)
+        viewer.draw_ws_line_fill(trajectory, color=c)
+        viewer.draw_ws_point(s_w, color=c)
+        viewer.draw_ws_point(t_w, color=c)
+    # Show indication of D
+    d = d.T
+    for i, d_row in enumerate(d):
+        x_1, x_2, d_t = d_row
+        s = pixel_map.grid_to_world(np.array((x_1, x_2)))
+        if d_t > 0:
+            viewer.set_drawing_axis(1)
+            viewer.draw_ws_point(s, color='b', shape='x')
+        else:
+            viewer.set_drawing_axis(0)
+            viewer.draw_ws_point(s, color='g', shape='x')
+        viewer.remove_axis()
+    if show_result:
+        viewer.show_once()
+    else:
+        viewer.save_figure(directory)
+
 
 def plot_error_avg(error, nb_samples, nb_runs, directory):
     """ Plot error over different number of samples, average over seeds """
