@@ -40,8 +40,11 @@ class Learch2D(Learch):
         self._loss_scalar = .8
         self._loss_stddev = .8
         # Parameters to compute the step size
-        self._learning_rate = 0.2
+        self._learning_rate = 0.8
         self._stepsize_scalar = 1
+        # Regularization parameters for the linear regression
+        self._l2_regularizer = 6  # 1e-6
+        self._proximal_regularizer = 0
 
         # Parameters to compute the cost map from RBFs
         self.nb_points = nb_points
@@ -62,6 +65,7 @@ class Learch2D(Learch):
         # Data structures to save the progress of LEARCH in each iteration
         self.optimal_paths = []
         self.maps = []
+        self.weights = []
 
         self.initialize_mydata()
 
@@ -96,9 +100,11 @@ class Learch2D(Learch):
 
             try:
                 # Compute the shortest path between the start and the target
-                optimal_path = converter.dijkstra_on_map(
-                    np.exp(self.costmap - self.loss_map[i]),
-                    s[0], s[1], t[0], t[1])
+                m = np.exp(self.costmap) - self.loss_map[i] - \
+                    np.ones(self.costmap.shape) * \
+                    np.amin(self.costmap - self.loss_map[i])
+                optimal_path = converter.dijkstra_on_map(m,
+                                                         s[0], s[1], t[0], t[1])
                 op[i] = optimal_path
             except Exception as e:
                 print("Exception")
@@ -130,7 +136,9 @@ class Learch2D(Learch):
         x2 = self.D[:][1].astype(int)
 
         Phi = self.phi[:, x1, x2].T
-        w_new = linear_regression(Phi, C, self.w, 6, 0)
+        w_new = linear_regression(Phi, C, self.w, self._l2_regularizer,
+                                  self._proximal_regularizer)
+        self.weights.append(w_new)
         self.w = self.w + self.get_stepsize(t) * w_new
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
@@ -142,29 +150,28 @@ class Learch2D(Learch):
         self.planning()
         self.supervised_learning(t)
         print("took t : {} sec.".format(time.time() - time_0))
-        return self.maps, self.optimal_paths
+        self.maps.append(self.costmap)
+        return self.maps, self.optimal_paths, self.weights
 
     def n_step(self, n):
         """ Compute n steps of the LEARCH algorithm """
         for i in range(n):
             self.one_step(i)
-            self.maps.append(self.costmap)
-        return self.maps, self.optimal_paths
+        return self.maps, self.optimal_paths, self.weights
 
     def solve(self):
         """ Compute LEARCH until the weights converge """
         w_old = copy.deepcopy(self.w)
         e = 10
         i = 0
-        while e > 1:
+        while e > 0.1:
             self.one_step(i)
-            print("w: ", self.w)
-            self.maps.append(self.costmap)
+            # print("w: ", self.w)
             e = (np.absolute(self.w - w_old)).sum()
-            print("convergence: ", e)
+            # print("convergence: ", e)
             w_old = copy.deepcopy(self.w)
             i += 1
-        return self.maps, self.optimal_paths
+        return self.maps, self.optimal_paths, self.weights
 
     def get_stepsize(self, t):
         """ Returns the step size for gradient descent
@@ -192,8 +199,9 @@ def scaled_hamming_loss_map(trajectory, nb_points,
         and larger values further away from the trajectory
     """
     occpancy_map = np.zeros((nb_points, nb_points))
-    for x_1, x_2 in trajectory:
-        occpancy_map[x_1][x_2] = 1
+    x_1 = np.asarray(trajectory)[:, 0]
+    x_2 = np.asarray(trajectory)[:, 1]
+    occpancy_map[x_1, x_2] = 1
     goodness = goodness_scalar * np.exp(-0.5 * (
             edt(occpancy_map) / goodness_stddev) ** 2)
     return 1 - goodness
@@ -205,8 +213,9 @@ def hamming_loss_map(trajectory, nb_points):
         and 1 everywhere else
     """
     occpancy_map = np.ones((nb_points, nb_points))
-    for x_1, x_2 in trajectory:
-        occpancy_map[x_1][x_2] = 0
+    x_1 = np.asarray(trajectory)[:, 0]
+    x_2 = np.asarray(trajectory)[:, 1]
+    occpancy_map[x_1][x_2] = 0
     return occpancy_map
 
 
@@ -260,7 +269,7 @@ def plan_paths(nb_samples, costmap, workspace, average_cost=False):
             time_0 = time.time()
             # Compute the shortest path between the start and the target
             path = converter.dijkstra_on_map(
-                np.exp(costmap), s[0], s[1], t[0], t[1])
+                costmap, s[0], s[1], t[0], t[1])
         except Exception as e:
             print("Exception")
 
