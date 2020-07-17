@@ -1,30 +1,12 @@
-#!/usr/bin/env python
-
-# Copyright (c) 2018, University of Stuttgart
-# All rights reserved.
-#
-# Permission to use, copy, modify, and distribute this software for any purpose
-# with or without   fee is hereby granted, provided   that the above  copyright
-# notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-# REGARD TO THIS  SOFTWARE INCLUDING ALL  IMPLIED WARRANTIES OF MERCHANTABILITY
-# AND FITNESS. IN NO EVENT SHALL THE AUTHOR  BE LIABLE FOR ANY SPECIAL, DIRECT,
-# INDIRECT, OR CONSEQUENTIAL DAMAGES OR  ANY DAMAGES WHATSOEVER RESULTING  FROM
-# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-# OTHER TORTIOUS ACTION,   ARISING OUT OF OR IN    CONNECTION WITH THE USE   OR
-# PERFORMANCE OF THIS SOFTWARE.
-#
-#                                        Jim Mainprice on Sunday June 13 2018
 import common_import
 
 import time
-import numpy as np
 from pyrieef.geometry.interpolation import *
 from pyrieef.geometry.workspace import *
 from pyrieef.graph.shortest_path import *
 from pyrieef.learning.inverse_optimal_control import *
-from scipy.interpolate import Rbf
+from my_utils.my_utils import *
+from costmap.costmap import *
 
 
 class Learch2D(Learch):
@@ -37,14 +19,16 @@ class Learch2D(Learch):
         self.workspace = workspace
 
         # Parameters to compute the loss map
-        self._loss_scalar = .8
-        self._loss_stddev = .8
+        self._loss_scalar = 1
+        self._loss_stddev = 1
         # Parameters to compute the step size
-        self._learning_rate = 0.8
+        self._learning_rate = 1
         self._stepsize_scalar = 1
         # Regularization parameters for the linear regression
         self._l2_regularizer = 6  # 1e-6
         self._proximal_regularizer = 0
+        # Change between gradient descent and exponentiated gradient descent
+        self.exponentiated_gd = False
 
         # Parameters to compute the cost map from RBFs
         self.nb_points = nb_points
@@ -61,6 +45,7 @@ class Learch2D(Learch):
         self.costmap = np.zeros((nb_points, nb_points))
         self.loss_map = np.zeros((len(paths), nb_points, nb_points))
         self.D = np.empty((3, 0))
+        self.policy = np.zeros((nb_points, nb_points))
 
         # Data structures to save the progress of LEARCH in each iteration
         self.optimal_paths = []
@@ -79,13 +64,26 @@ class Learch2D(Learch):
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
 
+    def get_policy(self):
+        ''' generate policy from costmap
+            returns array with shape (nb_points ** 2)
+            go from state policy[i] to state i
+        '''
+        converter = CostmapToSparseGraph(self.costmap)
+        converter.integral_cost = True
+        graph = converter.convert()
+
+        predecessors = shortest_paths(converter._graph_dense)
+        self.policy = predecessors[0]
+        return self.policy
+
     def planning(self):
         """ Compute the optimal path for each start and
             target state in the expample trajectories
             Add the states to self.D where the cost function has to
             increase/decrease
         """
-        # data structure saving the optimal trajectories in the current costmap
+        # Data structure saving the optimal trajectories in the current costmap
         op = [None] * len(self.sample_trajectories)
 
         converter = CostmapToSparseGraph(self.costmap)
@@ -102,7 +100,7 @@ class Learch2D(Learch):
                 # Compute the shortest path between the start and the target
                 m = np.exp(self.costmap) - self.loss_map[i] - \
                     np.ones(self.costmap.shape) * \
-                    np.amin(self.costmap - self.loss_map[i])
+                    np.amin(np.exp(self.costmap) - self.loss_map[i])
                 optimal_path = converter.dijkstra_on_map(m,
                                                          s[0], s[1], t[0], t[1])
                 op[i] = optimal_path
@@ -139,7 +137,14 @@ class Learch2D(Learch):
         w_new = linear_regression(Phi, C, self.w, self._l2_regularizer,
                                   self._proximal_regularizer)
         self.weights.append(w_new)
-        self.w = self.w + self.get_stepsize(t) * w_new
+        # Gradient Descent
+        if self.exponentiated_gd:
+            self.w = self.w * np.exp(get_stepsize(t, self._learning_rate,
+                                                  self._stepsize_scalar) * w_new)
+        else:
+            self.w = self.w + get_stepsize(t, self._learning_rate,
+                                           self._stepsize_scalar) * w_new
+
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
 
@@ -164,118 +169,11 @@ class Learch2D(Learch):
         w_old = copy.deepcopy(self.w)
         e = 10
         i = 0
-        while e > 0.1:
+        while e > 1:
             self.one_step(i)
             # print("w: ", self.w)
             e = (np.absolute(self.w - w_old)).sum()
-            # print("convergence: ", e)
+            print("convergence: ", e)
             w_old = copy.deepcopy(self.w)
             i += 1
         return self.maps, self.optimal_paths, self.weights
-
-    def get_stepsize(self, t):
-        """ Returns the step size for gradient descent
-            alpha = r / (t + m)
-                r: learning rate
-                t: iteration
-                m: scalar (specifies where the steps get more narrow)
-        """
-        return self._learning_rate / (t + self._stepsize_scalar)
-
-    def get_squared_stepsize(self, t):
-        """ Returns the step size for gradient descent
-            alpha = r / sqrt(t + m)
-                r: learning rate
-                t: iteration
-                m: scalar (specifies where the steps get more narrow)
-        """
-        return self._learning_rate / np.sqrt(t + self._stepsize_scalar)
-
-
-def scaled_hamming_loss_map(trajectory, nb_points,
-                            goodness_scalar, goodness_stddev):
-    """ Create a map from a given trajectory with a scaled hamming loss
-        with small values near by the trajectory
-        and larger values further away from the trajectory
-    """
-    occpancy_map = np.zeros((nb_points, nb_points))
-    x_1 = np.asarray(trajectory)[:, 0]
-    x_2 = np.asarray(trajectory)[:, 1]
-    occpancy_map[x_1, x_2] = 1
-    goodness = goodness_scalar * np.exp(-0.5 * (
-            edt(occpancy_map) / goodness_stddev) ** 2)
-    return 1 - goodness
-
-
-def hamming_loss_map(trajectory, nb_points):
-    """ Create a map from a given trajectory with the hamming loss
-        with 0 in all states of the given trajectory
-        and 1 everywhere else
-    """
-    occpancy_map = np.ones((nb_points, nb_points))
-    x_1 = np.asarray(trajectory)[:, 0]
-    x_2 = np.asarray(trajectory)[:, 1]
-    occpancy_map[x_1][x_2] = 0
-    return occpancy_map
-
-
-def get_rbf(nb_points, center, sigma, workspace):
-    """ Returns a radial basis function phi_i as map
-        phi_i = exp(-(x-center/sigma)**2)
-    """
-    X, Y = workspace.box.meshgrid(nb_points)
-    rbf = Rbf(center[0], center[1], 1, function='gaussian', epsilon=sigma)
-    map = rbf(X, Y)
-
-    return map
-
-
-def get_phi(nb_points, centers, sigma, workspace):
-    """ Returns the radial basis functions as vector """
-    rbfs = []
-    for i, center in enumerate(centers):
-        rbfs.append(get_rbf(nb_points, center, sigma, workspace))
-    phi = np.stack(rbfs)
-
-    return phi
-
-
-def get_costmap(nb_points, centers, sigma, w, workspace):
-    """ Returns the costmap of RBFs"""
-    costmap = np.tensordot(w,
-                           get_phi(nb_points, centers, sigma, workspace),
-                           axes=1)
-    return costmap
-
-
-def plan_paths(nb_samples, costmap, workspace, average_cost=False):
-    # Plan example trajectories
-    converter = CostmapToSparseGraph(costmap, average_cost)
-    converter.integral_cost = True
-    graph = converter.convert()
-    pixel_map = workspace.pixel_map(costmap.shape[0])
-
-    paths = []
-    starts = []
-    targets = []
-    for i in range(nb_samples):
-        # Choose start and target of the trajectory randomly
-        s_w = sample_collision_free(workspace)
-        t_w = sample_collision_free(workspace)
-        s = pixel_map.world_to_grid(s_w)
-        t = pixel_map.world_to_grid(t_w)
-        try:
-            print("planning...")
-            time_0 = time.time()
-            # Compute the shortest path between the start and the target
-            path = converter.dijkstra_on_map(
-                costmap, s[0], s[1], t[0], t[1])
-        except Exception as e:
-            print("Exception")
-
-        paths.append(path)
-        starts.append(s_w)
-        targets.append(t_w)
-        print("took t : {} sec.".format(time.time() - time_0))
-
-    return starts, targets, paths
