@@ -28,7 +28,7 @@ x = np.arange(nb_samples_l, nb_samples_u + 1)
 # Columns i corresponds to i example trajectories used in the LEARCH algorithm
 error_edt = np.zeros((nb_runs, len(x)))
 error_cost = np.zeros((nb_runs, len(x)))
-error_cost_along_path_gd = np.zeros((nb_runs, len(x)))
+error_cost_along_path = np.zeros((nb_runs, len(x)))
 
 learned_maps = []
 optimal_paths = []
@@ -71,16 +71,16 @@ for j in range(nb_runs):
             for n, op in enumerate(optimal_path[-1]):
                 error_edt[j, i - nb_samples_l] += \
                     get_edt(op, paths[n], nb_points) / len(paths[n])
-                error_cost_along_path_gd[j, i - nb_samples_l] += ( \
-                            np.abs(np.sum(np.exp(learned_map[-1])[np.asarray(op).astype(int)]) \
-                                   - np.sum(np.exp(learned_map[-1])[np.asarray(paths[n])])) / len(paths[n]))
+                error_cost_along_path[j, i - nb_samples_l] += np.abs(
+                    np.sum(learned_map[-1][np.asarray(op).astype(int)])
+                    - np.sum(learned_map[-1][np.asarray(paths[n])]))
 
             error_edt[j, i - nb_samples_l] = error_edt[j, i - nb_samples_l] / i
             error_cost[j, i - nb_samples_l] = \
                 np.sum(np.abs(learned_map[-1] - original_costmap)) / \
                 (nb_points ** 2)
-            error_cost_along_path_gd[j, i - nb_samples_l] = \
-                error_cost_along_path_gd[j, i - nb_samples_l] / i
+            error_cost_along_path[j, i - nb_samples_l] = \
+                error_cost_along_path[j, i - nb_samples_l] / i
 
         except:
             print("Unexpected error:", sys.exc_info()[0])
@@ -95,7 +95,7 @@ plot_error_avg(error_edt, x, nb_runs, directory)
 # Plot Error from costs difference along the paths
 directory = home + '/../figures/cost_along_paths_{}runs_{}-{}samples_egd.png' \
     .format(nb_runs, nb_samples_l, nb_samples_u)
-plot_error_avg(error_cost_along_path_gd, x, nb_runs,
+plot_error_avg(error_cost_along_path, x, nb_runs,
                directory)
 
 # Plot Error from costs difference of the whole map

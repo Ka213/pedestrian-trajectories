@@ -32,8 +32,59 @@ def get_expected_edge_frequency(transition_probability, costmap, N, nb_points):
     for t in range(1, N):
         D[:, t + 1] = np.sum(P * np.dot(transition_probability, D[:, t].T).
                              reshape(nb_points ** 2, 8), axis=1)
-    visitation_frequency = np.sum(D, axis=1)
+    visitation_frequency = np.sum(D, axis=1).reshape((nb_points, nb_points))
     return visitation_frequency
+
+
+def get_policy(costmap):
+    ''' Generate policy from costmap
+        returns array with shape (nb_points ** 2)
+        go from state policy[i] to state i
+    '''
+    converter = CostmapToSparseGraph(np.exp(costmap))
+    converter.integral_cost = True
+    graph = converter.convert()
+
+    predecessors = shortest_paths(converter._graph_dense)
+    policy = np.zeros(costmap.shape[0] ** 2)
+    for i, p in enumerate(predecessors.T):
+        policy[i] = np.bincount(np.abs(p)).argmax()
+    return policy
+
+
+def policy_iteration(costmap, nb_points, discount,
+                     transition_probability):
+    """ Compute policy iteration on the given costmap """
+    Q = np.zeros((nb_points ** 2, 8))
+    Q_old = copy.deepcopy(Q)
+    e = 10
+    while e > 1:
+        Q = np.tile(costmap, (8, 1)).reshape((nb_points ** 2, 8)) + discount * \
+            np.dot(transition_probability, np.amax(Q, axis=1).T) \
+                .reshape((nb_points ** 2, 8))
+        e = np.amax(np.abs(Q - Q_old))
+        Q_old = copy.deepcopy(Q)
+
+    return Q
+
+
+def get_transition_probabilities(costmap, nb_points):
+    """ Set transition probability matrix """
+    transition_probability = np.zeros((nb_points ** 2 * 8,
+                                       nb_points ** 2))
+    converter = CostmapToSparseGraph(costmap)
+    converter.integral_cost = True
+    graph = converter.convert()
+
+    for i in range(nb_points ** 2):
+        # Get neighbouring states in the order
+        # up, down, right, up-right, down-right, left, up-left, down-left
+        s = converter.costmap_id(i)
+        for j, n in enumerate(converter.neiborghs(s[0], s[1])):
+            if converter.is_in_costmap(n[0], n[1]):
+                x = converter.graph_id(n[0], n[1])
+                transition_probability[i * 8 + j, x] = 1
+    return transition_probability
 
 
 def get_stepsize(t, learning_rate, stepsize_scalar):

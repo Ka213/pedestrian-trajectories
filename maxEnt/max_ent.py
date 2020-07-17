@@ -36,37 +36,16 @@ class MaxEnt():
         self.w = np.ones(len(centers))
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
-        self.transition_probability = np.zeros((nb_points ** 2 * 8,
-                                                nb_points ** 2))
-        self.visitation_frequency = np.zeros(nb_points ** 2)
+        self.transition_probability = \
+            get_transition_probabilities(self.costmap, self.nb_points)
+        self.visitation_frequency = \
+            get_expected_edge_frequency(self.transition_probability,
+                                        self.costmap, self._N, self.nb_points)
 
         # Data structures to save the progress of MaxEnt in each iteration
         self.maps = []
         self.weights = []
 
-        self.initialize()
-
-    def initialize(self):
-        """ Set the transition probability matrix
-            and the expected edge frequency
-        """
-        # Set transition probability matrix
-        converter = CostmapToSparseGraph(self.costmap)
-        converter.integral_cost = True
-        graph = converter.convert()
-
-        for i in range(self.nb_points ** 2):
-            # Get neighbouring states in the order
-            # up, down, right, up-right, down-right, left, up-left, down-left
-            s = converter.costmap_id(i)
-            for j, n in enumerate(converter.neiborghs(s[0], s[1])):
-                if converter.is_in_costmap(n[0], n[1]):
-                    x = converter.graph_id(n[0], n[1])
-                    self.transition_probability[i * 8 + j, x] = 1
-
-        self.visitation_frequency = \
-            get_expected_edge_frequency(self.transition_probability,
-                                        self.costmap, self._N, self.nb_points)
 
     def one_step(self, t):
         """ Compute one gradient descent step """

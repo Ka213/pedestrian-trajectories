@@ -45,7 +45,11 @@ class Learch2D(Learch):
         self.costmap = np.zeros((nb_points, nb_points))
         self.loss_map = np.zeros((len(paths), nb_points, nb_points))
         self.D = np.empty((3, 0))
-        self.policy = np.zeros((nb_points, nb_points))
+        self.policy = np.zeros((nb_points ** 2))
+        self.visitation_frequency = np.zeros((nb_points, nb_points))
+        self._N = 10
+        self.transition_probability = np.zeros((nb_points ** 2 * 8,
+                                                nb_points ** 2))
 
         # Data structures to save the progress of LEARCH in each iteration
         self.optimal_paths = []
@@ -63,19 +67,6 @@ class Learch2D(Learch):
                 t, self.nb_points, self._loss_scalar, self._loss_stddev)
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
-
-    def get_policy(self):
-        ''' generate policy from costmap
-            returns array with shape (nb_points ** 2)
-            go from state policy[i] to state i
-        '''
-        converter = CostmapToSparseGraph(self.costmap)
-        converter.integral_cost = True
-        graph = converter.convert()
-
-        predecessors = shortest_paths(converter._graph_dense)
-        self.policy = predecessors[0]
-        return self.policy
 
     def planning(self):
         """ Compute the optimal path for each start and
