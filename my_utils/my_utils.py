@@ -61,7 +61,7 @@ def policy_iteration(costmap, nb_points, discount,
     while e > 1:
         Q = np.tile(costmap, (8, 1)).reshape((nb_points ** 2, 8)) + discount * \
             np.dot(transition_probability, np.amax(Q, axis=1).T) \
-                .reshape((nb_points ** 2, 8))
+            .reshape((nb_points ** 2, 8))
         e = np.amax(np.abs(Q - Q_old))
         Q_old = copy.deepcopy(Q)
 
@@ -118,8 +118,8 @@ def scaled_hamming_loss_map(trajectory, nb_points,
     x_2 = np.asarray(trajectory)[:, 1]
     occpancy_map[x_1, x_2] = 1
     goodness = goodness_scalar * np.exp(-0.5 * (
-            edt(occpancy_map) / goodness_stddev) ** 2)
-    return 1 - goodness
+        edt(occpancy_map) / goodness_stddev) ** 2)
+    return goodness_scalar - goodness
 
 
 def hamming_loss_map(trajectory, nb_points):

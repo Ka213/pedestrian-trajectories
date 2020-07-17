@@ -8,8 +8,8 @@ from output import *
 show_result = 'SHOW'
 average_cost = False
 nb_points = 40
-loss_scalar = 1
-loss_stddev = 1
+loss_scalar = .2
+loss_stddev = 10
 
 workspace = Workspace()
 pixel_map = workspace.pixel_map(nb_points)
