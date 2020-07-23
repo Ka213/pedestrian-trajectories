@@ -215,21 +215,23 @@ def show_multiple(costmaps, original_costmap, workspace, show_result,
         viewer.save_figure(directory)
 
 
-def plot_error_avg(error, x, nb_runs, directory):
+def plot_error_avg(error, nb_steps, x, nb_runs, directory):
     """ Plot error over different number of samples, average over seeds """
     y = np.average(error, axis=0)
+    s = np.average(nb_steps, axis=0)
     zero = np.zeros((len(x)))
     plt.figure()
-    plt.plot(x, y)
-    plt.plot(x, zero, '--')
-    plt.ylabel('error')
-    plt.xlabel('# of samples')
-    plt.xticks(np.arange(x[0], x[-1], math.ceil(len(x) / 10)))
     if nb_runs > 1:
         y_stddev = np.std(error, axis=0)
-        plt.errorbar(x, y, yerr=y_stddev, capsize=2)
+        plt.errorbar(x, y, yerr=y_stddev, capsize=2, label='error')
+    else:
+        plt.plot(x, y, label='error')
+    plt.plot(x, s, label='number of steps \nuntil convergence')
+    plt.plot(x, zero, '--')
+    plt.legend(loc="upper right")
+    plt.xticks(np.arange(x[0], x[-1], math.ceil(len(x) / 10)))
     plt.title(
-        '\n'.join(wrap('error over different number of samples averaged '
+        '\n'.join(wrap('error averaged '
                        'over {} different environments'.format(nb_runs), 60)))
     plt.savefig(directory)
 
