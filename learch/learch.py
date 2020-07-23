@@ -20,13 +20,13 @@ class Learch2D(Learch):
 
         # Parameters to compute the loss map
         self._loss_scalar = 1
-        self._loss_stddev = 1
+        self._loss_stddev = 10
         # Parameters to compute the step size
-        self._learning_rate = 1
-        self._stepsize_scalar = 1
+        self._learning_rate = 0.4
+        self._stepsize_scalar = 0.7
         # Regularization parameters for the linear regression
-        self._l2_regularizer = 6  # 1e-6
-        self._proximal_regularizer = 0
+        self._l2_regularizer = 0.6  # 1e-6
+        self._proximal_regularizer = 2
         # Change between gradient descent and exponentiated gradient descent
         self.exponentiated_gd = False
 
@@ -123,21 +123,37 @@ class Learch2D(Learch):
         C = self.D[:][2]
         x1 = self.D[:][0].astype(int)
         x2 = self.D[:][1].astype(int)
-
         Phi = self.phi[:, x1, x2].T
-        w_new = linear_regression(Phi, C, self.w, self._l2_regularizer,
-                                  self._proximal_regularizer)
-        self.weights.append(w_new)
-        # Gradient Descent
+
         if self.exponentiated_gd:
-            self.w = self.w * np.exp(get_stepsize(t, self._learning_rate,
+            # Exponentiated Gradient Descent
+            w_new = linear_regression(Phi, C, np.exp(self.w), self._l2_regularizer,
+                                      self._proximal_regularizer)
+            # w_new = self.get_subgadient()
+            self.w = np.exp(self.w * get_stepsize(t, self._learning_rate,
                                                   self._stepsize_scalar) * w_new)
+            self.w = np.log(self.w)
         else:
+            # Gradient Descent
+            w_new = linear_regression(Phi, C, self.w, self._l2_regularizer,
+                                      self._proximal_regularizer)
+            # w_new = self.get_subgadient()
             self.w = self.w + get_stepsize(t, self._learning_rate,
                                            self._stepsize_scalar) * w_new
-
+        self.weights.append(w_new)
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
+
+    def get_subgadient(self):
+        """ Return the subgradient of the maximum margin planning objective """
+        g = 0
+        for i, op in enumerate(self.optimal_paths[-1]):
+            g += np.sum(self.phi[:, np.asarray(self.sample_trajectories[i]).T[:][0],
+                        np.asarray(self.sample_trajectories[i]).T[:][1]], axis=1) \
+                 - np.sum(self.phi[:, np.asarray(op).T[:][0],
+                          np.asarray(op).T[:][1]], axis=1)
+        g = - g / (len(self.sample_trajectories)) + self._l2_regularizer * self.w
+        return g
 
     def one_step(self, t):
         """ Compute one step of the LEARCH algorithm """
