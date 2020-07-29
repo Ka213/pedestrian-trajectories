@@ -17,10 +17,10 @@ class MaxEnt():
         self.workspace = workspace
 
         # Parameters to compute the step size
-        self._learning_rate = 0.8
+        self._learning_rate = 0.5
         self._stepsize_scalar = 1
 
-        self._N = 10
+        self._N = 80
 
         # Parameters to compute the cost map from RBFs
         self.nb_points = nb_points
@@ -33,14 +33,11 @@ class MaxEnt():
         self.sample_starts = starts
         self.sample_targets = targets
 
-        self.w = np.ones(len(centers))
+        self.w = np.zeros(len(centers))
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
         self.transition_probability = \
             get_transition_probabilities(self.costmap, self.nb_points)
-        self.visitation_frequency = \
-            get_expected_edge_frequency(self.transition_probability,
-                                        self.costmap, self._N, self.nb_points)
 
         # Data structures to save the progress of MaxEnt in each iteration
         self.maps = []
@@ -51,17 +48,15 @@ class MaxEnt():
         """ Compute one gradient descent step """
         time_0 = time.time()
         print("step :", t)
-
         self.w = self.w + get_stepsize(t, self._learning_rate,
                                        self._stepsize_scalar) \
                  * self.get_gradient()
-        self.visitation_frequency = \
-            get_expected_edge_frequency(self.transition_probability,
-                                        self.costmap, self._N, self.nb_points)
+        self.costmap = get_costmap(self.nb_points, self.centers, self.sigma,
+                                   self.w, self.workspace)
         print("took t : {} sec.".format(time.time() - time_0))
         self.maps.append(self.costmap)
         self.weights.append(self.w)
-        return self.maps, self.weights
+        return self.maps, self.w
 
     def n_step(self, n):
         """ Compute n gradient descent step """
@@ -86,15 +81,15 @@ class MaxEnt():
     def get_gradient(self):
         """ Compute the gradient of the maximum entropy objective """
         Phi = get_phi(self.nb_points, self.centers, self.sigma, self.workspace)
-        x_1 = np.empty(0)
-        x_2 = np.empty(0)
-        for i, trajectory in enumerate(self.sample_trajectories):
-            x_1 = np.hstack((x_1, np.asarray(trajectory)[:, 0]))
-            x_2 = np.hstack((x_2, np.asarray(trajectory)[:, 1]))
-        f_empirical = np.sum(Phi[:, x_1.astype(int), x_2.astype(int)]) \
-                      / len(self.sample_trajectories)
-
-        a = f_empirical - np.sum(np.tile(
-            self.visitation_frequency.reshape((self.nb_points, self.nb_points)),
-            (len(self.w), 1, 1)) * Phi, axis=(1, 2))
-        return a
+        # Calculate expected empirical feature counts
+        f_empirical = get_empirical_feature_count \
+            (self.sample_trajectories, Phi)
+        # Calculate the learners expected feature count
+        D = get_expected_edge_frequency(self.transition_probability,
+                                        self.costmap, self._N, self.nb_points,
+                                        self.sample_targets,
+                                        self.sample_trajectories, self.workspace)
+        f_expected = np.tensordot(Phi, D)
+        f = f_empirical - f_expected
+        f = - f - np.min(- f)
+        return f

@@ -47,7 +47,6 @@ class Learch2D(Learch):
         self.D = np.empty((3, 0))
         self.policy = np.zeros((nb_points ** 2))
         self.visitation_frequency = np.zeros((nb_points, nb_points))
-        self._N = 10
         self.transition_probability = np.zeros((nb_points ** 2 * 8,
                                                 nb_points ** 2))
 

@@ -5,6 +5,7 @@ import numpy as np
 from pyrieef.geometry.workspace import *
 from pyrieef.geometry.interpolation import *
 from pyrieef.graph.shortest_path import *
+from my_utils.output import *
 
 
 def get_edt(optimal_trajectory, sample_trajectory, nb_points):
@@ -19,21 +20,58 @@ def get_edt(optimal_trajectory, sample_trajectory, nb_points):
     return np.sum(distance[np.asarray(optimal_trajectory).astype(int)])
 
 
-def get_expected_edge_frequency(transition_probability, costmap, N, nb_points):
-    """ Set the visitation frequency """
-    Z_s = np.ones(nb_points ** 2)
-    Z_a = np.multiply(np.dot(transition_probability, Z_s.T).
-                      reshape(nb_points ** 2, 8),
-                      np.tile(np.exp(costmap.reshape(nb_points ** 2)),
-                              (8, 1)).T)
-    Z_s = np.sum(Z_a, axis=1)
+def get_empirical_feature_count(sample_trajectories, Phi):
+    """ Return the expected empirical feature counts """
+    f = np.zeros(Phi.shape[0])
+    for i, trajectory in enumerate(sample_trajectories):
+        x_1 = np.asarray(trajectory)[:, 0]
+        x_2 = np.asarray(trajectory)[:, 1]
+        f += np.sum(Phi[:, x_1.astype(int), x_2.astype(int)],
+                    axis=1)
+    f = f / len(sample_trajectories)
+    return f
+
+
+def get_expected_edge_frequency(transition_probability, costmap, N, nb_points,
+                                terminal_states, paths, workspace):
+    """ Return the expected state visitation frequency """
+    converter = CostmapToSparseGraph(costmap)
+    converter.integral_cost = True
+    graph = converter.convert()
+
+    terminal = []
+    pixel_map = workspace.pixel_map(nb_points)
+    for t in terminal_states:
+        t = pixel_map.world_to_grid(t)
+        terminal.append(converter.graph_id(t[0], t[1]))
+
+    # Backward pass
+    Z_s = np.zeros((nb_points ** 2))
+    Z_s[terminal] = 1
+    for i in range(N):
+        Z_a = np.multiply(np.dot(transition_probability, Z_s.T).
+                          reshape(nb_points ** 2, 8),
+                          np.tile(np.exp(-costmap.reshape(nb_points ** 2)),
+                                  (8, 1)).T)
+        Z_s = np.sum(Z_a, axis=1)
+    # Local Action Probability Computation
     P = Z_a / np.tile(Z_s, (8, 1)).T
-    D = np.ones((nb_points ** 2, N + 1)) / nb_points ** 2
-    for t in range(1, N):
-        D[:, t + 1] = np.sum(P * np.dot(transition_probability, D[:, t].T).
+    # Forward Pass
+    D = np.zeros((nb_points ** 2, N + 1))
+    # Initial state probabilities
+    l = 0
+    for path in paths:
+        for point in path:
+            x = converter.graph_id(point[0], point[1])
+            l += 1
+            D[x, 0] = 1
+    D[:, 0] = D[:, 0] / l
+    for t in range(0, N):
+        D[:, t + 1] = np.sum(P * np.dot(transition_probability, D[:, t]).
                              reshape(nb_points ** 2, 8), axis=1)
+    # Summing frequencies
     visitation_frequency = np.sum(D, axis=1).reshape((nb_points, nb_points))
-    return visitation_frequency
+    return visitation_frequency.T
 
 
 def get_policy(costmap):
@@ -78,7 +116,7 @@ def get_transition_probabilities(costmap, nb_points):
 
     for i in range(nb_points ** 2):
         # Get neighbouring states in the order
-        # up, down, right, up-right, down-right, left, up-left, down-left
+        # down, up, right, down-right, up-right, left, down-left, up-left
         s = converter.costmap_id(i)
         for j, n in enumerate(converter.neiborghs(s[0], s[1])):
             if converter.is_in_costmap(n[0], n[1]):

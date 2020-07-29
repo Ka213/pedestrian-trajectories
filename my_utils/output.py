@@ -32,8 +32,9 @@ def show_weights(viewer, weights, workspace):
         draw a blue dot in the center of the weights which have to increase
         draw a green dot in the center of the weights which have to decrease
     """
-    centers = workspace.box.meshgrid_points(5)
-    weights = weights.reshape((5, 5)).T.reshape(25)
+    a = int(math.sqrt(len(weights)))
+    centers = workspace.box.meshgrid_points(a)
+    weights = weights.reshape((a, a)).T.reshape(len(weights))
     for i, (w_t, c) in enumerate(zip(weights, centers)):
         if w_t > 0:
             viewer.draw_ws_point(c, color='b', shape='x')
@@ -207,7 +208,7 @@ def show_multiple(costmaps, original_costmap, workspace, show_result,
     viewer._fig.tight_layout()
 
     if title is not None:
-        viewer.set_title('\n'.join(wrap(title, 60)))
+        viewer.set_title('\n'.join(wrap(title, 60)), fontsize=32)
 
     if show_result == 'SHOW':
         viewer.show_once()
