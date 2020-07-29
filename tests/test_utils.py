@@ -1,6 +1,7 @@
 import common_import
 
 from pyrieef.geometry.workspace import *
+from pyrieef.graph.shortest_path import *
 from costmap.costmap import *
 from my_utils.my_utils import *
 from my_utils.output import *
@@ -33,7 +34,6 @@ def test_policy_iteration():
 
     for i, d in enumerate(direction):
         s = converter.costmap_id(i)
-        # up, down, right, up - right, down - right, left, up - left, down - left
         if d == 0:
             new_s = (s[0], s[1] - 1)
         elif d == 1:
@@ -56,28 +56,70 @@ def test_policy_iteration():
     show(original_costmap, workspace, show_result, predecessors=ancestor)
 
 
-def test_state_visitation_frequency_counts():
+def test_expected_edge_frequency():
+    show_result = 'SHOW'
     nb_points = 40
     nb_rbfs = 5
     sigma = 0.1
-    N = 10
-    show_result = 'SHOW'
+    nb_samples = 300
+    N = 5
 
     workspace = Workspace()
-    np.random.seed(3)
+    np.random.seed(1)
 
     # Create costmap with rbfs
     w = np.random.random(nb_rbfs ** 2)
     centers = workspace.box.meshgrid_points(nb_rbfs)
     original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
+    Phi = get_phi(nb_points, centers, sigma, workspace)
+
+    # Plan example trajectories
+    starts, targets, paths = plan_paths(nb_samples, original_costmap, workspace)
 
     P = get_transition_probabilities(original_costmap, nb_points)
-    frequency_counts = get_expected_edge_frequency(P, original_costmap, N,
-                                                   nb_points)
-    show(frequency_counts, workspace, show_result)
+    D = get_expected_edge_frequency(P, original_costmap, N, nb_points, targets,
+                                    paths, workspace)
+    D = - D - np.min(-D)
+    f = np.tensordot(Phi, D)
 
+    print("expected: ", (np.absolute(f - w)).sum())
+    assert (np.absolute(f - w)).sum() < len(w) * 0.5
+
+    map = get_costmap(nb_points, centers, sigma, f, workspace)
+    show_multiple([map], original_costmap, workspace, show_result,
+                  # starts=starts, targets=targets, paths=paths,
+                  title="expected state visitation frequency")
+
+
+def test_get_empirical_feature_count():
+    nb_points = 40
+    nb_rbfs = 5
+    sigma = 0.1
+    nb_samples = 200
+
+    workspace = Workspace()
+    np.random.seed(1)
+
+    # Create costmap with rbfs
+    w = np.random.random(nb_rbfs ** 2)
+    centers = workspace.box.meshgrid_points(nb_rbfs)
+    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
+    Phi = get_phi(nb_points, centers, sigma, workspace)
+    # Plan example trajectories
+    starts, targets, paths = plan_paths(nb_samples, original_costmap, workspace)
+
+    f = get_empirical_feature_count(paths, Phi)
+    f = - f - np.min(- f)
+    print("empirical features:", (np.absolute(f - w)).sum())
+    assert (np.absolute(f - w)).sum() < len(w) * 0.5
+
+    map = get_costmap(nb_points, centers, sigma, f, workspace)
+    show_multiple([map], original_costmap, workspace, show_result,
+                  # starts=starts, targets=targets, paths=paths,
+                  title="empirical feature counts")
 
 if __name__ == "__main__":
     show_result = 'SHOW'
+    test_expected_edge_frequency()
     test_policy_iteration()
-    test_state_visitation_frequency_counts()
+    test_get_empirical_feature_count()
