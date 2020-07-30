@@ -5,7 +5,6 @@ import numpy as np
 from pyrieef.geometry.workspace import *
 from pyrieef.geometry.interpolation import *
 from pyrieef.graph.shortest_path import *
-from my_utils.output import *
 
 
 def get_edt(optimal_trajectory, sample_trajectory, nb_points):
