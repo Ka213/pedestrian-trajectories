@@ -98,7 +98,7 @@ def policy_iteration(costmap, nb_points, discount,
     while e > 1:
         Q = np.tile(costmap, (8, 1)).reshape((nb_points ** 2, 8)) + discount * \
             np.dot(transition_probability, np.amax(Q, axis=1).T) \
-            .reshape((nb_points ** 2, 8))
+                .reshape((nb_points ** 2, 8))
         e = np.amax(np.abs(Q - Q_old))
         Q_old = copy.deepcopy(Q)
 
@@ -155,7 +155,7 @@ def scaled_hamming_loss_map(trajectory, nb_points,
     x_2 = np.asarray(trajectory)[:, 1]
     occpancy_map[x_1, x_2] = 1
     goodness = goodness_scalar * np.exp(-0.5 * (
-        edt(occpancy_map) / goodness_stddev) ** 2)
+            edt(occpancy_map) / goodness_stddev) ** 2)
     return goodness_scalar - goodness
 
 
@@ -172,7 +172,7 @@ def hamming_loss_map(trajectory, nb_points):
 
 
 def plan_paths(nb_samples, costmap, workspace, average_cost=False):
-    # Plan example trajectories
+    """ Plan example trajectories with random start and target state """
     converter = CostmapToSparseGraph(costmap, average_cost)
     converter.integral_cost = True
     graph = converter.convert()
@@ -201,3 +201,30 @@ def plan_paths(nb_samples, costmap, workspace, average_cost=False):
         print("took t : {} sec.".format(time.time() - time_0))
 
     return starts, targets, paths
+
+
+def plan_paths_fix_start(starts, targets, maps,
+                         workspace, average_cost=False):
+    """ Plan example trajectories with given start and target state """
+    paths = []
+    for map, s_w, t_w in zip(maps, starts, targets):
+        converter = CostmapToSparseGraph(map, average_cost)
+        converter.integral_cost = True
+        graph = converter.convert()
+        pixel_map = workspace.pixel_map(map.shape[0])
+
+        s = pixel_map.world_to_grid(s_w)
+        t = pixel_map.world_to_grid(t_w)
+        try:
+            print("planning...")
+            time_0 = time.time()
+            # Compute the shortest path between the start and the target
+            path = converter.dijkstra_on_map(map, s[0], s[1], t[0], t[1])
+        except Exception as e:
+            print("Exception")
+            continue
+
+        paths.append(path)
+        print("took t : {} sec.".format(time.time() - time_0))
+
+    return paths
