@@ -1,8 +1,6 @@
 import common_import
 
-import numpy as np
-from pyrieef.geometry.workspace import Workspace
-from costmap import *
+from my_utils.costmap import *
 from my_utils.output import *
 from my_utils.my_utils import *
 
@@ -15,7 +13,6 @@ sigma = 0.1
 nb_samples = 5
 
 workspace = Workspace()
-pixel_map = workspace.pixel_map(nb_points)
 np.random.seed(1)
 
 # Create costmap with rbfs

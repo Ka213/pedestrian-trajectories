@@ -1,9 +1,7 @@
 from common_import import *
 
-import numpy as np
-from pyrieef.geometry.workspace import Workspace
-from my_utils import *
-from output import *
+from my_utils.my_utils import *
+from my_utils.output import *
 
 show_result = 'SHOW'
 average_cost = False

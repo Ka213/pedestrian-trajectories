@@ -1,18 +1,14 @@
 import common_import
 
-from pyrieef.geometry.workspace import *
-from pyrieef.geometry.interpolation import *
-from pyrieef.graph.shortest_path import *
-from pyrieef.learning.inverse_optimal_control import *
 from my_utils.output import *
-from costmap.costmap import *
+from my_utils.costmap import *
 from my_utils.my_utils import *
 
 show_result = 'SHOW'
 nb_points = 40
 nb_rbfs = 5
 sigma = 0.1
-nb_samples = 100
+nb_samples = 10
 N = 80
 
 workspace = Workspace()

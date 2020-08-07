@@ -1,11 +1,7 @@
-import common_import
+from common_import import *
 
-from pyrieef.geometry.interpolation import *
-from pyrieef.geometry.workspace import *
-from pyrieef.graph.shortest_path import *
-from pyrieef.learning.inverse_optimal_control import *
 from my_utils.my_utils import *
-from costmap.costmap import *
+from my_utils.costmap import *
 
 
 class MaxEnt():
@@ -17,10 +13,10 @@ class MaxEnt():
         self.workspace = workspace
 
         # Parameters to compute the step size
-        self._learning_rate = 0.5
+        self._learning_rate = 0.1
         self._stepsize_scalar = 1
 
-        self._N = 80
+        self._N = 70
 
         # Parameters to compute the cost map from RBFs
         self.nb_points = nb_points
@@ -43,7 +39,6 @@ class MaxEnt():
         self.maps = []
         self.weights = []
 
-
     def one_step(self, t):
         """ Compute one gradient descent step """
         time_0 = time.time()
@@ -56,7 +51,7 @@ class MaxEnt():
         print("took t : {} sec.".format(time.time() - time_0))
         self.maps.append(self.costmap)
         self.weights.append(self.w)
-        return self.maps, self.w
+        return self.maps, self.weights
 
     def n_step(self, n):
         """ Compute n gradient descent step """
