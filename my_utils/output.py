@@ -272,8 +272,8 @@ def plot_from_file(show_image, directory, directoryToSave):
         ax.set_xlabel('proximal regularization')
         ax.set_ylabel('l2 regularization')
     elif param == 'loss':
-        ax.set_xlabel('loss scalar')
-        ax.set_ylabel('loss stddev')
+        ax.set_xlabel('loss stddev')
+        ax.set_ylabel('loss scalar')
     x_1, x_2 = np.meshgrid(x1, x2)
     norm = plt.Normalize(y.min(), y.max())
     colors = cm.viridis(norm(y))

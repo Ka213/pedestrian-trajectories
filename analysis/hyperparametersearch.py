@@ -122,13 +122,13 @@ for j in range(nb_runs):
             # Add regularization factor to loss
             if learning == 'learch':
                 loss[j, int(i / parameter_step) - param_lower_bound] = \
-                    (loss[j, int(i / parameter_step) - param_lower_bound] / i) + \
+                    (loss[j, int(i / parameter_step) - param_lower_bound] / nb_samples) + \
                     (l._l2_regularizer + l._proximal_regularizer) \
-                    * np.linalg.norm(w_t)
+                    * np.linalg.norm(w_t[-1])
             elif learning == 'maxEnt':
                 loss[j, int(i / parameter_step) - param_lower_bound] = \
-                    (loss[j, int(i / parameter_step) - param_lower_bound] / i) + \
-                    np.linalg.norm(w_t)
+                    (loss[j, int(i / parameter_step) - param_lower_bound] / nb_samples) + \
+                    np.linalg.norm(w_t[-1])
         except KeyboardInterrupt:
             break
         except Exception:
