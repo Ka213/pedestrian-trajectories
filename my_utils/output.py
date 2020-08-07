@@ -2,14 +2,13 @@ import common_import
 
 from textwrap import wrap
 import numpy as np
+from matplotlib import cm
 import matplotlib
+import math
 # print(matplotlib.get_backend())
+from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 import pyrieef.rendering.workspace_renderer as render
-from pyrieef.geometry.interpolation import *
-from pyrieef.geometry.workspace import *
-from pyrieef.graph.shortest_path import *
-from pyrieef.learning.inverse_optimal_control import *
 
 
 def show_example_trajectories(paths, pixel_map, starts, targets, viewer):
@@ -221,20 +220,84 @@ def plot_error_avg(error, nb_steps, x, nb_runs, directory):
     y = np.average(error, axis=0)
     s = np.average(nb_steps, axis=0)
     zero = np.zeros((len(x)))
-    plt.figure()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     if nb_runs > 1:
         y_stddev = np.std(error, axis=0)
-        plt.errorbar(x, y, yerr=y_stddev, capsize=2, label='error')
+        ax.errorbar(x, y, yerr=y_stddev, capsize=2, label='loss')
     else:
-        plt.plot(x, y, label='error')
-    plt.plot(x, s, label='number of steps \nuntil convergence')
-    plt.plot(x, zero, '--')
-    plt.legend(loc="upper right")
-    plt.xticks(np.arange(x[0], x[-1], math.ceil(len(x) / 10)))
+        ax.plot(x, y, label='error')
+    ax.plot(x, s, label='number of steps \nuntil convergence')
+    ax.plot(x, zero, '--')
+    ax.legend(loc="upper right")
+    plt.legend()
+    plt.xticks(np.arange(x[0], x[-1] + (x[1] - x[0]),
+                         math.ceil((len(x) / 10)) * (x[1] - x[0])))
+    # ax.set_xscale('log')
+    # ax.set_xticks(x[::2])
+    ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
     plt.title(
-        '\n'.join(wrap('error averaged '
+        '\n'.join(wrap('loss averaged '
                        'over {} different environments'.format(nb_runs), 60)))
     plt.savefig(directory)
+
+
+def plot_from_file(show_image, directory, directoryToSave):
+    """ Read data from file and plot it in 3D graph """
+    matplotlib.use('Qt5Agg')
+    print(matplotlib.get_backend())
+    file = np.load(directory)
+    error = file['loss']
+    y = np.average(error, axis=0)
+    nb_steps = file['nb_steps']
+    s = np.average(nb_steps, axis=0)
+    x1 = file['x1']
+    x2 = file['x2']
+    zero = np.zeros((len(x1), len(x2)))
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    strings = directory.split('_')
+    param = strings[2]
+    learning = strings[0]
+    if param == 'step size':
+        ax.set_xlabel('step size scalar')
+        ax.set_ylabel('learning rate')
+    elif param == 'regularization':
+        print(x1)
+        print(x2)
+        x1 = np.arange(len(x1))
+        x2 = np.arange(len(x2))
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel('proximal regularization')
+        ax.set_ylabel('l2 regularization')
+    elif param == 'loss':
+        ax.set_xlabel('loss scalar')
+        ax.set_ylabel('loss stddev')
+    x_1, x_2 = np.meshgrid(x1, x2)
+    norm = plt.Normalize(y.min(), y.max())
+    colors = cm.viridis(norm(y))
+    rcount, ccount, _ = colors.shape
+    surf = ax.plot_surface(x_1, x_2, y, rcount=rcount, ccount=ccount,
+                           facecolors=colors, shade=False, label='error')
+    surf.set_facecolor((0, 0, 0, 0))
+    nb_runs = file['nb_runs']
+    norm = plt.Normalize(s.min(), s.max())
+    colors = cm.Reds(norm(s))
+    rcount, ccount, _ = colors.shape
+    # numbers = ax.plot_surface(x_1, x_2, s, rcount=rcount, ccount=ccount,
+    #                          facecolors=colors, shade=False,
+    #                          label='number of steps \nuntil convergence')
+    # numbers.set_facecolor((0, 0, 0, 0))
+    # ax.plot_surface(x_1, x_2, zero)
+    ax.set_zlabel('loss')
+    plt.title(
+        '\n'.join(wrap('loss averaged '
+                       'over {} different environments'.format(nb_runs), 60)))
+    if show_image == 'SHOW':
+        plt.show()
+    elif show_image == 'SAVE':
+        plt.savefig(directoryToSave)
 
 
 def plot_error_fix_nbsamples(error, nb_samples, nb_runs, directory):
@@ -242,10 +305,10 @@ def plot_error_fix_nbsamples(error, nb_samples, nb_runs, directory):
     x = np.arange(nb_runs) + 1
     plt.figure()
     plt.plot(x, error)
-    plt.ylabel('error')
+    plt.ylabel('loss')
     plt.xlabel('runs')
     plt.xticks(np.arange(1, nb_runs, math.ceil(len(nb_runs) / 10)))
-    plt.title('error over different seeds for {} samples'.format(nb_samples))
+    plt.title('loss over different seeds for {} samples'.format(nb_samples))
     plt.savefig(directory)
 
 
