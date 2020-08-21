@@ -1,10 +1,9 @@
 import common_import
-
 from pyrieef.geometry.workspace import *
 from pyrieef.graph.shortest_path import *
-from costmap.costmap import *
+from my_utils.environment import *
 from my_utils.my_utils import *
-from my_utils.output import *
+from my_utils.output_costmap import *
 
 
 def test_policy_iteration():
@@ -15,12 +14,10 @@ def test_policy_iteration():
     show_result = 'SHOW'
 
     workspace = Workspace()
-    np.random.seed(3)
-
-    # Create costmap with rbfs
-    w = np.random.random(nb_rbfs ** 2)
-    centers = workspace.box.meshgrid_points(nb_rbfs)
-    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
+    np.random.seed(1)
+    # Create random costmap
+    w, original_costmap, starts, targets, paths = \
+        create_random_environment(nb_points, nb_rbfs, sigma, 0, workspace)
 
     P = get_transition_probabilities(original_costmap, nb_points)
     policy = policy_iteration(original_costmap, nb_points, discount, P)
@@ -66,15 +63,12 @@ def test_expected_edge_frequency():
 
     workspace = Workspace()
     np.random.seed(1)
-
-    # Create costmap with rbfs
-    w = np.random.random(nb_rbfs ** 2)
+    # Create random costmap
+    w, original_costmap, starts, targets, paths = \
+        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
+                                  workspace)
     centers = workspace.box.meshgrid_points(nb_rbfs)
-    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
     Phi = get_phi(nb_points, centers, sigma, workspace)
-
-    # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples, original_costmap, workspace)
 
     P = get_transition_probabilities(original_costmap, nb_points)
     D = get_expected_edge_frequency(P, original_costmap, N, nb_points, targets,
@@ -99,14 +93,12 @@ def test_get_empirical_feature_count():
 
     workspace = Workspace()
     np.random.seed(1)
-
-    # Create costmap with rbfs
-    w = np.random.random(nb_rbfs ** 2)
+    # Create random costmap
+    w, original_costmap, starts, targets, paths = \
+        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
+                                  workspace)
     centers = workspace.box.meshgrid_points(nb_rbfs)
-    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
     Phi = get_phi(nb_points, centers, sigma, workspace)
-    # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples, original_costmap, workspace)
 
     f = get_empirical_feature_count(paths, Phi)
     f = - f - np.min(- f)

@@ -1,9 +1,6 @@
 import common_import
-
-import numpy as np
-from my_utils.output import *
-from costmap.costmap import *
-from learch.learch import *
+from my_utils.output_costmap import *
+from my_learning.learch import *
 from pyrieef.geometry.workspace import Workspace
 
 
@@ -14,47 +11,50 @@ def test_supervised_learning():
     nb_samples = 10
 
     workspace = Workspace()
-    np.random.seed(3)
-
-    # Create costmap with rbfs
-    w = np.random.random(nb_rbfs ** 2)
+    np.random.seed(1)
+    # Create random costmap
+    w, original_costmap, starts, targets, paths = \
+        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
+                                  workspace)
     centers = workspace.box.meshgrid_points(nb_rbfs)
-    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
 
-    # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples, original_costmap, workspace)
-
-    l = Learch2D(nb_points, centers, sigma, paths, starts,
-                 targets, workspace)
+    l = Learch2D(nb_points, centers, sigma, paths, starts, targets, workspace)
+    l.exponentiated_gd = True
+    if l.exponentiated_gd:
+        t = 1
+    else:
+        t = 0.001
     l.D = np.zeros((3, nb_points ** 2))
 
     # adjust parameters
     l._learning_rate = 1
     l._stepsize_scalar = 1
-    l._l2_regularizer = 0
+    l._l2_regularizer = 1
     l._proximal_regularizer = 0
 
     # iterate LEARCH until weights are converged
     w_old = copy.deepcopy(l.w)
     e = 10
     i = 0
-    while e > 0.001:
-        # construct D from all states of the original costmap
+
+    while e > t:
+        # construct D from all states of the original analysis
         x, y = np.meshgrid(range(nb_points), range(nb_points))
         x_1 = np.reshape(y, nb_points ** 2)
         x_2 = np.reshape(x, nb_points ** 2)
         y = np.reshape(original_costmap, nb_points ** 2)
         l.D = np.vstack((x_1, x_2, y))
-        maps, _, w = l.one_step(i)
-        e = (np.absolute(w[-1] - w_old)).sum()
+        l.supervised_learning(i)
+        maps = l.maps
+        e = np.amax(np.absolute(l.weights[-1] - w_old))
         print("convergence: ", e)
-        w_old = copy.deepcopy(w[-1])
+        w_old = copy.deepcopy(l.weights[-1])
         i += 1
+    print((np.absolute(maps[-1] - original_costmap)).sum())
     assert (np.absolute(maps[-1] - original_costmap)).sum() < \
            nb_points ** 2 * 1.5
-    show_multiple(maps, original_costmap, workspace, show_result, directory=
-    home + '/../figures/maps_from_test_supervised_learning')
-
+    show_multiple(maps[::40], original_costmap, workspace, show_result, directory=
+    home + '/../figures/maps_from_test_supervised_learning.png')
 
 def test_D():
     nb_points = 40
@@ -64,17 +64,12 @@ def test_D():
 
     workspace = Workspace()
     np.random.seed(1)
-
-    # Create costmap with rbfs
-    w = np.random.random(nb_rbfs ** 2)
+    # Create random costmap
+    w, original_costmap, starts, targets, paths = \
+        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace)
     centers = workspace.box.meshgrid_points(nb_rbfs)
-    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
 
-    # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples, original_costmap, workspace)
-
-    l = Learch2D(nb_points, centers, sigma, paths, starts,
-                 targets, workspace)
+    l = Learch2D(nb_points, centers, sigma, paths, starts, targets, workspace)
     l.planning()
     len_paths = [len(p) for p in paths]
     len_optimal_paths = [len(op) for op in l.optimal_paths[-1]]
