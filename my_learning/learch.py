@@ -2,7 +2,7 @@ import common_import
 
 from pyrieef.learning.inverse_optimal_control import *
 from my_utils.my_utils import *
-from my_utils.costmap import *
+from my_utils.environment import *
 
 
 class Learch2D(Learch):
@@ -15,14 +15,14 @@ class Learch2D(Learch):
         self.workspace = workspace
 
         # Parameters to compute the loss map
-        self._loss_scalar = 1.3
+        self._loss_scalar = 19
         self._loss_stddev = 10
         # Parameters to compute the step size
-        self._learning_rate = 0.2
-        self._stepsize_scalar = 2
+        self._learning_rate = 1.91
+        self._stepsize_scalar = 20
         # Regularization parameters for the linear regression
-        self._l2_regularizer = 1  # 1e-6
-        self._proximal_regularizer = 0  # 1e-6
+        self._l2_regularizer = 0.38  # 1e-6
+        self._proximal_regularizer = 0.006  # 1e-6
         # Change between gradient descent and exponentiated gradient descent
         self.exponentiated_gd = True
 
@@ -60,6 +60,8 @@ class Learch2D(Learch):
         for i, t in enumerate(self.sample_trajectories):
             self.loss_map[i] = scaled_hamming_loss_map(
                 t, self.nb_points, self._loss_scalar, self._loss_stddev)
+        if self.exponentiated_gd:
+            self.w = np.log(np.ones(len(self.centers)))
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
 
@@ -69,16 +71,17 @@ class Learch2D(Learch):
             Add the states to self.D where the cost function has to
             increase/decrease
         """
-        maps = np.exp(self.costmap) - self.loss_map - \
-               np.ones(self.costmap.shape) * \
-               np.amin(np.exp(self.costmap) - self.loss_map)
+        optimal_paths = []
+        for i, (s, t) in enumerate(zip(self.sample_starts, self.sample_targets)):
+            map = self.costmap - self.loss_map[i] - \
+                  np.ones(self.costmap.shape) * \
+                  np.amin(self.costmap - self.loss_map[i])
+            _, _, paths = plan_paths(1, map, self.workspace, starts=[s],
+                                     targets=[t])
+            optimal_paths.append(paths[0])
 
-        optimal_paths = plan_paths_fix_start(self.sample_starts,
-                                             self.sample_targets, maps,
-                                             self.workspace)
-
-        for i, (trajectory, optimal_path) in enumerate(zip(self.sample_trajectories,
-                                                           optimal_paths)):
+        for i, (trajectory, optimal_path) in enumerate(zip(
+                self.sample_trajectories, optimal_paths)):
             # Add the states of the optimal trajectory to D
             # The costs should be increased in the states
             # of the optimal trajectory
@@ -107,12 +110,19 @@ class Learch2D(Learch):
 
         if self.exponentiated_gd:
             # Exponentiated Gradient Descent
-            w_new = linear_regression(Phi, C, np.exp(self.w), self._l2_regularizer,
+            w_new = linear_regression(Phi, C, np.exp(self.w),
+                                      self._l2_regularizer,
                                       self._proximal_regularizer)
             # w_new = self.get_subgadient()
-            self.w = np.exp(self.w * get_stepsize(t, self._learning_rate,
+            self.w = np.exp(self.w + get_stepsize(t, self._learning_rate,
                                                   self._stepsize_scalar) * w_new)
+            print("step size: ", get_stepsize(t, self._learning_rate,
+                                              self._stepsize_scalar))
+            self.costmap = get_costmap(self.nb_points, self.centers, self.sigma,
+                                       self.w, self.workspace)
+            self.weights.append(self.w)
             self.w = np.log(self.w)
+            self.maps.append(self.costmap)
         else:
             # Gradient Descent
             w_new = linear_regression(Phi, C, self.w, self._l2_regularizer,
@@ -120,19 +130,25 @@ class Learch2D(Learch):
             # w_new = self.get_subgadient()
             self.w = self.w + get_stepsize(t, self._learning_rate,
                                            self._stepsize_scalar) * w_new
-        self.weights.append(self.w)
-        self.costmap = get_costmap(
-            self.nb_points, self.centers, self.sigma, self.w, self.workspace)
+            print("step size: ", get_stepsize(t, self._learning_rate,
+                                              self._stepsize_scalar))
+
+            self.costmap = get_costmap(self.nb_points, self.centers, self.sigma,
+                                       self.w, self.workspace)
+            self.weights.append(self.w)
+            self.maps.append(self.costmap)
 
     def get_subgadient(self):
         """ Return the subgradient of the maximum margin planning objective """
         g = 0
         for i, op in enumerate(self.optimal_paths[-1]):
-            g += np.sum(self.phi[:, np.asarray(self.sample_trajectories[i]).T[:][0],
-                        np.asarray(self.sample_trajectories[i]).T[:][1]], axis=1) \
+            g += np.sum(
+                self.phi[:, np.asarray(self.sample_trajectories[i]).T[:][0],
+                np.asarray(self.sample_trajectories[i]).T[:][1]], axis=1) \
                  - np.sum(self.phi[:, np.asarray(op).T[:][0],
                           np.asarray(op).T[:][1]], axis=1)
-        g = - g / (len(self.sample_trajectories)) + self._l2_regularizer * self.w
+        g = - g / (len(self.sample_trajectories)) \
+            + self._l2_regularizer * self.w
         return g
 
     def one_step(self, t):
@@ -141,35 +157,37 @@ class Learch2D(Learch):
         print("step :", t)
         self.planning()
         self.supervised_learning(t)
-        print("took t : {} sec.".format(time.time() - time_0))
-        self.maps.append(self.costmap)
-        if self.exponentiated_gd:
-            return self.maps, self.optimal_paths, np.exp(self.weights)
-        else:
-            return self.maps, self.optimal_paths, self.weights
+        # print("took t : {} sec.".format(time.time() - time_0))
+        return self.maps, self.optimal_paths, self.weights
 
     def n_step(self, n):
         """ Compute n steps of the LEARCH algorithm """
         for i in range(n):
             self.one_step(i)
-        if self.exponentiated_gd:
-            return self.maps, self.optimal_paths, np.exp(self.weights)
-        else:
-            return self.maps, self.optimal_paths, self.weights
+        return self.maps, self.optimal_paths, self.weights
 
     def solve(self):
         """ Compute LEARCH until the weights converge """
         w_old = copy.deepcopy(self.w)
         e = 10
         i = 0
-        while e > 1:
+        while e > 0.1:
             self.one_step(i)
             # print("w: ", self.w)
-            e = (np.absolute(self.w - w_old)).sum()
+            e = np.amax(np.absolute(self.w - w_old))
             print("convergence: ", e)
             w_old = copy.deepcopy(self.w)
             i += 1
-        if self.exponentiated_gd:
-            return self.maps, self.optimal_paths, np.exp(self.weights)
-        else:
-            return self.maps, self.optimal_paths, self.weights
+        return self.maps, self.optimal_paths, self.weights
+
+
+def get_learch_loss(original_costmap, optimal_paths, demonstrations, nb_samples,
+                    l_2, l_proximal, w):
+    loss = 0
+    for op, d in zip(optimal_paths, demonstrations):
+        loss += np.sum(original_costmap[np.asarray(d).T[:][0],
+                                        np.asarray(d).T[:][1]]) \
+                - np.sum(original_costmap[np.asarray(op).T[:][0],
+                                          np.asarray(op).T[:][1]])
+    loss = (loss / nb_samples) + (l_2 + l_proximal) * np.linalg.norm(w)
+    return loss

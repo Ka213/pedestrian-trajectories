@@ -1,7 +1,7 @@
 from common_import import *
 
 from my_utils.my_utils import *
-from my_utils.costmap import *
+from my_utils.environment import *
 
 
 class MaxEnt():
@@ -14,9 +14,9 @@ class MaxEnt():
 
         # Parameters to compute the step size
         self._learning_rate = 0.1
-        self._stepsize_scalar = 1
+        self._stepsize_scalar = 20
 
-        self._N = 70
+        self._N = 199
 
         # Parameters to compute the cost map from RBFs
         self.nb_points = nb_points
@@ -68,7 +68,7 @@ class MaxEnt():
             self.one_step(i)
             # print("w: ", self.w)
             e = (np.absolute(self.w - w_old)).sum()
-            # print("convergence: ", e)
+            print("convergence: ", e)
             w_old = copy.deepcopy(self.w)
             i += 1
         return self.maps, self.weights
@@ -80,11 +80,25 @@ class MaxEnt():
         f_empirical = get_empirical_feature_count \
             (self.sample_trajectories, Phi)
         # Calculate the learners expected feature count
-        D = get_expected_edge_frequency(self.transition_probability,
-                                        self.costmap, self._N, self.nb_points,
-                                        self.sample_targets,
-                                        self.sample_trajectories, self.workspace)
+        try:
+            D = get_expected_edge_frequency(self.transition_probability,
+                                            self.costmap, self._N,
+                                            self.nb_points, self.sample_targets,
+                                            self.sample_trajectories,
+                                            self.workspace)
+        except Exception:
+            raise
         f_expected = np.tensordot(Phi, D)
         f = f_empirical - f_expected
         f = - f - np.min(- f)
         return f
+
+
+def get_maxEnt_loss(learned_map, demonstrations, nb_samples, w):
+    loss = 0
+    for d in zip(demonstrations):
+        loss += \
+            np.sum(learned_map[np.asarray(d).T[:][0],
+                               np.asarray(d).T[:][1]])
+    loss = (loss / nb_samples) + np.linalg.norm(w)
+    return loss
