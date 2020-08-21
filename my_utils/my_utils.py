@@ -1,7 +1,9 @@
 from common_import import *
 
 import time
+import warnings
 import numpy as np
+from sklearn.metrics import log_loss
 from pyrieef.geometry.workspace import *
 from pyrieef.geometry.interpolation import *
 from pyrieef.graph.shortest_path import *
@@ -47,30 +49,37 @@ def get_expected_edge_frequency(transition_probability, costmap, N, nb_points,
     # Backward pass
     Z_s = np.zeros((nb_points ** 2))
     Z_s[terminal] = 1
-    for i in range(N):
-        Z_a = np.multiply(np.dot(transition_probability, Z_s.T).
-                          reshape(nb_points ** 2, 8),
-                          np.tile(np.exp(-costmap.reshape(nb_points ** 2)),
-                                  (8, 1)).T)
-        Z_s = np.sum(Z_a, axis=1)
-    # Local Action Probability Computation
-    P = Z_a / np.tile(Z_s, (8, 1)).T
-    # Forward Pass
-    D = np.zeros((nb_points ** 2, N + 1))
-    # Initial state probabilities
-    l = 0
-    for path in paths:
-        for point in path:
-            x = converter.graph_id(point[0], point[1])
-            l += 1
-            D[x, 0] = 1
-    D[:, 0] = D[:, 0] / l
-    for t in range(0, N):
-        D[:, t + 1] = np.sum(P * np.dot(transition_probability, D[:, t]).
-                             reshape(nb_points ** 2, 8), axis=1)
-    # Summing frequencies
-    visitation_frequency = np.sum(D, axis=1).reshape((nb_points, nb_points))
-    return visitation_frequency.T
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error')
+        try:
+            for i in range(N):
+                Z_a = np.multiply(np.dot(transition_probability, Z_s.T).
+                                  reshape(nb_points ** 2, 8), np.tile(np.exp(
+                    -costmap.reshape(nb_points ** 2)), (8, 1)).T)
+                Z_s = np.sum(Z_a, axis=1)
+            # Local Action Probability Computation
+            P = Z_a / np.tile(Z_s, (8, 1)).T
+            # Forward Pass
+            D = np.zeros((nb_points ** 2, N + 1))
+            # Initial state probabilities
+            l = 0
+            for path in paths:
+                for point in path:
+                    x = converter.graph_id(point[0], point[1])
+                    l += 1
+                    D[x, 0] = 1
+            D[:, 0] = D[:, 0] / l
+            for t in range(0, N):
+                D[:, t + 1] = np.sum(P * np.dot(transition_probability, D[:, t]).
+                                     reshape(nb_points ** 2, 8), axis=1)
+            # Summing frequencies
+            visitation_frequency = np.sum(D, axis=1).reshape((nb_points, nb_points))
+            return visitation_frequency.T
+        except Warning as w:
+            print("Warning happend while computing the expected edge frequency")
+            print(w)
+            raise
+            return np.zeros((nb_points, nb_points))
 
 
 def get_policy(costmap):
@@ -167,64 +176,34 @@ def hamming_loss_map(trajectory, nb_points):
     occpancy_map = np.ones((nb_points, nb_points))
     x_1 = np.asarray(trajectory)[:, 0]
     x_2 = np.asarray(trajectory)[:, 1]
-    occpancy_map[x_1][x_2] = 0
+    occpancy_map[x_1, x_2] = 0
     return occpancy_map
 
 
-def plan_paths(nb_samples, costmap, workspace, average_cost=False):
-    """ Plan example trajectories with random start and target state """
-    converter = CostmapToSparseGraph(costmap, average_cost)
-    converter.integral_cost = True
-    graph = converter.convert()
-    pixel_map = workspace.pixel_map(costmap.shape[0])
-
-    paths = []
-    starts = []
-    targets = []
-    for i in range(nb_samples):
-        # Choose start and target of the trajectory randomly
-        s_w = sample_collision_free(workspace)
-        t_w = sample_collision_free(workspace)
-        s = pixel_map.world_to_grid(s_w)
-        t = pixel_map.world_to_grid(t_w)
-        try:
-            print("planning...")
-            time_0 = time.time()
-            # Compute the shortest path between the start and the target
-            path = converter.dijkstra_on_map(costmap, s[0], s[1], t[0], t[1])
-        except Exception as e:
-            print("Exception")
-
-        paths.append(path)
-        starts.append(s_w)
-        targets.append(t_w)
-        print("took t : {} sec.".format(time.time() - time_0))
-
-    return starts, targets, paths
+def get_edt_loss(nb_points, learned_paths, demonstrations, nb_samples):
+    """ Return the loss of the euclidean distance transform
+        between the demonstrations and learned paths
+    """
+    loss = 0
+    for op, d in zip(learned_paths, demonstrations):
+        loss += get_edt(op, d, nb_points) / len(d)
+    loss = loss / nb_samples
+    return loss
 
 
-def plan_paths_fix_start(starts, targets, maps,
-                         workspace, average_cost=False):
-    """ Plan example trajectories with given start and target state """
-    paths = []
-    for map, s_w, t_w in zip(maps, starts, targets):
-        converter = CostmapToSparseGraph(map, average_cost)
-        converter.integral_cost = True
-        graph = converter.convert()
-        pixel_map = workspace.pixel_map(map.shape[0])
+def get_overall_loss(nb_points, learned_map, original_costmap):
+    """ Return the difference between the costsmaps """
+    loss = np.sum(np.abs(learned_map - original_costmap)) / (nb_points ** 2)
+    return loss
 
-        s = pixel_map.world_to_grid(s_w)
-        t = pixel_map.world_to_grid(t_w)
-        try:
-            print("planning...")
-            time_0 = time.time()
-            # Compute the shortest path between the start and the target
-            path = converter.dijkstra_on_map(map, s[0], s[1], t[0], t[1])
-        except Exception as e:
-            print("Exception")
-            continue
 
-        paths.append(path)
-        print("took t : {} sec.".format(time.time() - time_0))
-
-    return paths
+def get_nll(learned_paths, demonstrations, nb_points):
+    """ Return the negative log likelihood
+        of the learned paths and the predictions
+    """
+    loss = 0
+    for l, d in zip(learned_paths, demonstrations):
+        pred = hamming_loss_map(l, nb_points)
+        truth = hamming_loss_map(d, nb_points)
+        loss += log_loss(truth, pred)
+    return loss / len(learned_paths)
