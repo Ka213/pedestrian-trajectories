@@ -1,4 +1,4 @@
-import common_import
+from common_import import *
 
 from textwrap import wrap
 import numpy as np
@@ -177,7 +177,7 @@ def show_multiple(costmaps, original_costmap, workspace, show_result,
     """ Show multiple maps and optional optimal example trajectories,
         optimal trajectories, indication of weights, D or policy
     """
-    pixel_map = workspace.pixel_map(costmaps[0].shape[0])
+    pixel_map = workspace.pixel_map(original_costmap.shape[0])
     rows = math.ceil(math.sqrt(len(costmaps) / step + 1))
     cols = math.ceil((len(costmaps) / step + 1) / rows)
     viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True,
@@ -215,101 +215,81 @@ def show_multiple(costmaps, original_costmap, workspace, show_result,
         viewer.save_figure(directory)
 
 
-def plot_error_avg(error, nb_steps, x, nb_runs, directory):
-    """ Plot error over different number of samples, average over seeds """
-    y = np.average(error, axis=0)
-    s = np.average(nb_steps, axis=0)
-    zero = np.zeros((len(x)))
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    if nb_runs > 1:
-        y_stddev = np.std(error, axis=0)
-        ax.errorbar(x, y, yerr=y_stddev, capsize=2, label='loss')
-    else:
-        ax.plot(x, y, label='error')
-    ax.plot(x, s, label='number of steps \nuntil convergence')
-    ax.plot(x, zero, '--')
-    ax.legend(loc="upper right")
-    plt.legend()
-    plt.xticks(np.arange(x[0], x[-1] + (x[1] - x[0]),
-                         math.ceil((len(x) / 10)) * (x[1] - x[0])))
-    # ax.set_xscale('log')
-    # ax.set_xticks(x[::2])
-    ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    plt.title(
-        '\n'.join(wrap('loss averaged '
-                       'over {} different environments'.format(nb_runs), 60)))
-    plt.savefig(directory)
+def save_environment(filename, nb_points, nb_rbfs, sigma, nb_samples, w,
+                     costmap, starts, targets, paths):
+    """ Save the environment with given demonstrations in a file"""
+    file = home + '/../data/environment/' + filename + '.npz'
+    np.savez(file, nb_points=nb_points, nb_rbfs=nb_rbfs, sigma=sigma,
+             nb_samples=nb_samples, w=w, costmap=costmap, starts=starts,
+             targets=targets, paths=paths)
+    return file
 
 
-def plot_from_file(show_image, directory, directoryToSave):
-    """ Read data from file and plot it in 3D graph """
-    matplotlib.use('Qt5Agg')
-    print(matplotlib.get_backend())
+def load_environment(filename):
+    """ Load an environment with demonstrations from a file """
+    file = np.load(home + '/../data/environment/' + filename + '.npz',
+                   allow_pickle=True)
+    w = file['w']
+    costmap = file['costmap']
+    starts = file['starts']
+    targets = file['targets']
+    paths = file['paths']
+    return w, costmap, starts, targets, paths
+
+
+def load_environment_params(filename):
+    """ Load an environment with demonstrations from a file"""
+    file = np.load(home + '/../data/environment/' + filename + '.npz',
+                   allow_pickle=True)
+    nb_points = file['nb_points']
+    nb_rbfs = file['nb_rbfs']
+    sigma = file['sigma']
+    nb_samples = file['nb_samples']
+    return nb_points, nb_rbfs, sigma, nb_samples
+
+
+def save_learch_params(directory, l):
+    """ Save the hyperparametes of a LEARCH instance in a file """
+    file = directory + '.npz'
+    np.savez(file, loss_scalar=l._loss_scalar, loss_stddev=l._loss_stddev,
+             learning_rate=l._learning_rate, stepsize_scalar=l._stepsize_scalar,
+             l2_regularizer=l._l2_regularizer, proximal_regularizer=
+             l._proximal_regularizer, exponentiatd_gd=l.exponentiated_gd)
+    return file
+
+
+def set_learch_params(directory, l):
+    """ Set the hyperparameters of a LEARCH instance according to the values
+        saved in the given file
+    """
     file = np.load(directory)
-    error = file['loss']
-    y = np.average(error, axis=0)
-    nb_steps = file['nb_steps']
-    s = np.average(nb_steps, axis=0)
-    x1 = file['x1']
-    x2 = file['x2']
-    zero = np.zeros((len(x1), len(x2)))
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    strings = directory.split('_')
-    param = strings[2]
-    learning = strings[0]
-    if param == 'step size':
-        ax.set_xlabel('step size scalar')
-        ax.set_ylabel('learning rate')
-    elif param == 'regularization':
-        print(x1)
-        print(x2)
-        x1 = np.arange(len(x1))
-        x2 = np.arange(len(x2))
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_xlabel('proximal regularization')
-        ax.set_ylabel('l2 regularization')
-    elif param == 'loss':
-        ax.set_xlabel('loss stddev')
-        ax.set_ylabel('loss scalar')
-    x_1, x_2 = np.meshgrid(x1, x2)
-    norm = plt.Normalize(y.min(), y.max())
-    colors = cm.viridis(norm(y))
-    rcount, ccount, _ = colors.shape
-    surf = ax.plot_surface(x_1, x_2, y, rcount=rcount, ccount=ccount,
-                           facecolors=colors, shade=False, label='error')
-    surf.set_facecolor((0, 0, 0, 0))
-    nb_runs = file['nb_runs']
-    norm = plt.Normalize(s.min(), s.max())
-    colors = cm.Reds(norm(s))
-    rcount, ccount, _ = colors.shape
-    # numbers = ax.plot_surface(x_1, x_2, s, rcount=rcount, ccount=ccount,
-    #                          facecolors=colors, shade=False,
-    #                          label='number of steps \nuntil convergence')
-    # numbers.set_facecolor((0, 0, 0, 0))
-    # ax.plot_surface(x_1, x_2, zero)
-    ax.set_zlabel('loss')
-    plt.title(
-        '\n'.join(wrap('loss averaged '
-                       'over {} different environments'.format(nb_runs), 60)))
-    if show_image == 'SHOW':
-        plt.show()
-    elif show_image == 'SAVE':
-        plt.savefig(directoryToSave)
+    l._loss_scalar = file['loss_scalar']
+    l._loss_stddev = file['loss_stddev']
+    l._learing_rate = file['learning_rate']
+    l._stepsize_scalar = file['stepsize_scalar']
+    l._l2_regularizer = file['l2_regularizer']
+    l._proximal_regularizer = file['proximal_regularizer']
+    l.exponentiated_gd = file['exponentiated_gd']
+    return l
 
 
-def plot_error_fix_nbsamples(error, nb_samples, nb_runs, directory):
-    """ Plot error over different seeds for fixed number of samples """
-    x = np.arange(nb_runs) + 1
-    plt.figure()
-    plt.plot(x, error)
-    plt.ylabel('loss')
-    plt.xlabel('runs')
-    plt.xticks(np.arange(1, nb_runs, math.ceil(len(nb_runs) / 10)))
-    plt.title('loss over different seeds for {} samples'.format(nb_samples))
-    plt.savefig(directory)
+def save_maxEnt_params(directory, m):
+    """ Save the hyperparametes of a maxEnt instance in a file """
+    file = directory + '.npz'
+    np.savez(file, learning_rate=m._learning_rate, stepsize_scalar=
+    m._stepsize_scalar, N=m._N)
+    return file
+
+
+def set_maxEnt_params(directory, m):
+    """ Set the hyperparameters of a maxEnt instance according to the values
+        saved in the given file
+    """
+    file = np.load(directory)
+    m._learning_rate = file['learning_rate']
+    m._stepsize_scalar = file['stepsize_scalar']
+    m._N = file['N']
+    return m
 
 
 cmap = plt.get_cmap('viridis')
