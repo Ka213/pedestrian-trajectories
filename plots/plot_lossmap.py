@@ -1,7 +1,8 @@
 from common_import import *
 
 from my_utils.my_utils import *
-from my_utils.output import *
+from my_utils.output_costmap import *
+from my_utils.environment import *
 
 show_result = 'SHOW'
 average_cost = False

@@ -14,9 +14,11 @@ nb_samples = 100
 
 workspace = Workspace()
 np.random.seed(1)
-
-w, costmap, starts, targets, paths = \
-    create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace)
+filename = "environment0"
+# Load saved environment
+w, costmap, starts, targets, paths = load_environment(filename)
+nb_points, nb_rbfs, sigma, nb_samples = load_environment_params(filename)
+print(nb_points, nb_rbfs, sigma, nb_samples)
 
 # Output costmap
 if with_trajectories:
