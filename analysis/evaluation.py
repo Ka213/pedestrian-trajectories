@@ -1,9 +1,12 @@
 from common_import import *
 
+import time
 import datetime
-from my_utils.output import *
+from pathlib import Path
+from my_utils.output_costmap import *
+from my_utils.output_analysis import *
 from my_utils.my_utils import *
-from my_utils.costmap import *
+from my_utils.environment import *
 from my_learning.max_ent import *
 from my_learning.learch import *
 
@@ -12,55 +15,56 @@ average_cost = False
 # set the learning method to evaluate
 # choose between learch and maxEnt
 learning = 'learch'
-nb_points = 40
-nb_rbfs = 5
-sigma = 0.1
 nb_samples_l = 1
-nb_samples_u = 10
+nb_samples_u = 2
 nb_runs = 1
 exponentiated_gd = True
 
 workspace = Workspace()
-pixel_map = workspace.pixel_map(nb_points)
 
 x = np.arange(nb_samples_l, nb_samples_u + 1)
-# Data structure to measure the accuracy of the LEARCH algorithm
+# Data structures to evaluate the learning algorithm
 # Each row corresponds to one environment
-# Columns i corresponds to i example trajectories used in the LEARCH algorithm
+# Columns i corresponds to i example trajectories used in the learning algorithm
 error_edt = np.zeros((nb_runs, len(x)))
 error_cost = np.zeros((nb_runs, len(x)))
 loss = np.zeros((nb_runs, len(x)))
 nb_steps = np.zeros((nb_runs, len(x)))
+learning_time = np.zeros((nb_runs, len(x)))
 
 learned_maps = []
 optimal_paths = []
 weights = []
 original_costmaps = []
 
-# Open file to save weights of the environment
-file = open(home + "/../environment.txt", "a")
-
-file.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
-file.write(str(nb_runs) + '\n')
+directory = home + '/../evaluation/{}_{}runs_{}-{}samples'.format(learning,
+                                                                  nb_runs,
+                                                                  nb_samples_l,
+                                                                  nb_samples_u)
+Path(directory).mkdir(parents=True, exist_ok=True)
+file = open(directory + "/metadata.txt", "w")
+file.write("date: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+           + '\n')
 
 t = time.time()
+# For each environment
 for j in range(nb_runs):
     print("run: ", j)
+    file.write("run: " + str(j) + '\n')
     np.random.seed(j)
-
-    # Create costmap with rbfs
-    w = np.random.random(nb_rbfs ** 2)
-    file.write(str(w) + '\n')
+    w, original_costmap, starts, targets, paths = load_environment("environment"
+                                                                   + str(j))
+    nb_points, nb_rbfs, sigma, _ = load_environment_params(
+        "environment" + str(j))
+    pixel_map = workspace.pixel_map(nb_points)
     centers = workspace.box.meshgrid_points(nb_rbfs)
-    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
+    file.write("environment: " + "environment" + str(j) + '\n')
     original_costmaps.append(original_costmap)
-    # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples_u,
-                                        original_costmap, workspace)
 
-    # Compute loss
+    # For each number of demonstrations
     for i in range(nb_samples_l, nb_samples_u + 1):
         print('{} samples'.format(i))
+        time_0 = time.time()
         # Learn costmap
         if learning == 'learch':
             l = Learch2D(nb_points, centers, sigma, paths[:i],
@@ -71,9 +75,12 @@ for j in range(nb_runs):
             l = MaxEnt(nb_points, centers, sigma,
                        paths[:i], starts[:i], targets[:i], workspace)
             learned_map, w_t = l.solve()
-            maps = [learned_map[-1]] * i
-            optimal_path = [plan_paths_fix_start(starts[:i], targets[:i],
-                                                 maps, workspace)]
+            _, _, optimal_path = plan_paths(i, learned_map[-1],
+                                            workspace, starts=starts[:i],
+                                            targets=targets[:i])
+            optimal_path = [optimal_path]
+
+        learning_time[j, i - nb_samples_l] = time.time() - time_0
 
         learned_maps.append(learned_map[-1])
         optimal_paths.append(optimal_path[-1])
@@ -81,56 +88,42 @@ for j in range(nb_runs):
         nb_steps[j, i - nb_samples_l] = len(w_t)
 
         # Calculate loss
-        for n, op in enumerate(optimal_path[-1]):
-            error_edt[j, i - nb_samples_l] += \
-                get_edt(op, paths[n], nb_points) / len(paths[n])
-            if learning == 'learch':
-                loss[j, i - nb_samples_l] += \
-                    np.sum(original_costmap[np.asarray(paths[n]).T[:][0],
-                                            np.asarray(paths[n]).T[:][1]]) \
-                    - np.sum(original_costmap[np.asarray(op).T[:][0],
-                                              np.asarray(op).T[:][1]])
-            elif learning == 'maxEnt':
-                loss[j, i - nb_samples_l] += \
-                    np.sum(learned_map[-1][np.asarray(paths[n]).T[:][0],
-                                           np.asarray(paths[n]).T[:][1]])
-
-        error_edt[j, i - nb_samples_l] = error_edt[j, i - nb_samples_l] / i
-        error_cost[j, i - nb_samples_l] = \
-            np.sum(np.abs(learned_map[-1] - original_costmap)) / \
-            (nb_points ** 2)
         if learning == 'learch':
-            loss[j, i - nb_samples_l] = (loss[j, i - nb_samples_l] / i) + \
-                                        (l._l2_regularizer +
-                                         l._proximal_regularizer) \
-                                        * np.linalg.norm(w_t[-1])
+            loss[j, i - nb_samples_l] = get_learch_loss(original_costmap,
+                                                        optimal_path[-1],
+                                                        paths[:i], i,
+                                                        l._l2_regularizer,
+                                                        l._proximal_regularizer,
+                                                        w_t[-1])
         elif learning == 'maxEnt':
-            loss[j, i - nb_samples_l] = (loss[j, i - nb_samples_l] / i) + \
-                                        np.linalg.norm(w_t[-1])
+            loss[j, i - nb_samples_l] = get_maxEnt_loss(learned_map[-1],
+                                                        paths[:i], i, w_t[-1])
 
-# Plot Error from euclidean distance transform
-directory = home + '/../figures/{}_edt_{}runs_{}-{}samples.png' \
-    .format(learning, nb_runs, nb_samples_l, nb_samples_u)
-plot_error_avg(error_edt, nb_steps, x, nb_runs, directory)
+        error_edt[j, i - nb_samples_l] = get_edt_loss(nb_points,
+                                                      optimal_paths[-1],
+                                                      paths[:i], i)
 
-# Plot Error from costs difference along the paths
-directory = home + '/../figures/{}_loss_{}runs_{}-{}samples_egd.png' \
-    .format(learning, nb_runs, nb_samples_l, nb_samples_u)
-plot_error_avg(loss, nb_steps, x, nb_runs,
-               directory)
+        error_cost[j, i - nb_samples_l] = get_overall_loss(nb_points,
+                                                           learned_map[-1],
+                                                           original_costmap)
 
-# Plot Error from costs difference of the whole map
-directory = home + '/../figures/{}_cost_whole_map_{}runs_{}-{}samples_egd.png' \
-    .format(learning, nb_runs, nb_samples_l, nb_samples_u)
-plot_error_avg(error_cost, nb_steps, x, nb_runs, directory)
+if learning == "learch":
+    save_learch_params(directory + "/params", l)
+elif learning == "maxEnt":
+    save_maxEnt_params(directory + "/params", l)
 
-# Show learned costmaps for different number of samples
+# Plot results
+plot_avg_over_runs(x, nb_runs, directory + "/edt.png", loss=error_edt,
+                   nb_steps=nb_steps)
+plot_avg_over_runs(x, nb_runs, directory + "/loss.png", loss=loss,
+                   nb_steps=nb_steps)
+plot_avg_over_runs(x, nb_runs, directory + "/costs.png", loss=error_cost,
+                   nb_steps=nb_steps)
+plot_avg_over_runs(x, nb_runs, directory + "/learning_time.png",
+                   time=learning_time)
 show_multiple(learned_maps, original_costmap, workspace, show_result,
-              directory=home +
-                        '/../figures/{}_costmaps_{}runs_{}-{}samples_egd.png'
-              .format(learning, nb_runs, nb_samples_l, nb_samples_u))
+              directory=directory + '/costmaps.png')
 
-duration = time.time() - t
-file.write("duration: {}".format(duration) + '\n')
+file.write("duration: {}".format(time.time() - t) + '\n')
 
 file.close()

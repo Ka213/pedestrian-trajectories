@@ -2,8 +2,8 @@ from common_import import *
 
 from pyrieef.geometry.workspace import *
 import datetime
-from my_utils.costmap import *
-from my_utils.output import *
+from my_utils.environment import *
+from my_utils.output_costmap import *
 from my_utils.my_utils import *
 from my_learning.max_ent import *
 from my_learning.learch import *
@@ -21,8 +21,8 @@ sigma = 0.1
 nb_samples = 10
 nb_runs = 1
 parameter_step = 1
-param_upper_bound = 2
 param_lower_bound = 1
+param_upper_bound = 2
 exponentiated_gd = True
 
 workspace = Workspace()
@@ -34,6 +34,7 @@ x2 = np.arange(param_lower_bound, param_upper_bound + 1, parameter_step)
 # Columns i corresponds to parameter i used in the LEARCH algorithm
 loss = np.zeros((nb_runs, len(x1), len(x2)))
 nb_steps = np.zeros((nb_runs, len(x1), len(x2)))
+learning_time = np.zeros((nb_runs, len(x1), len(x2)))
 
 learned_maps = []
 optimal_paths = []
@@ -78,56 +79,47 @@ for j in range(nb_runs):
                     l._learning_rate = i / 10
                     l._stepsize_scalar = k
                 elif param == 'regularization':
-                    l._l2_regularizer = 1 / (10 * i)
-                    l._proximal_regularizer = 1 / (10 * k)
+                    l._l2_regularizer = 10 / (10 ** i)
+                    l._proximal_regularizer = 10 / (10 ** k)
                 elif param == 'loss':
                     l._loss_stddev = i
-                    l._loss_scalar = k / 10
+                    l._loss_scalar = k  # / 10
                     l.initialize_mydata()
 
+                time_0 = time.time()
                 # Learn costmap
                 if learning == 'learch':
                     learned_map, optimal_path, w_t = l.solve()
                 elif learning == 'maxEnt':
                     learned_map, w_t = l.solve()
-                    maps = [learned_map[-1]] * i
-                    optimal_path = [plan_paths_fix_start(starts, targets,
-                                                         maps, workspace)]
+                    _, _, optimal_path = plan_paths(nb_samples, learned_map[-1],
+                                                    workspace, starts=starts,
+                                                    targets=targets)
+                    optimal_path = [optimal_path]
+
+                learning_time[j, int(i / parameter_step) - param_lower_bound,
+                              int(k / parameter_step) - param_lower_bound] = \
+                    time.time() - time_0
                 nb_steps[j, int(i / parameter_step) - param_lower_bound,
-                         int(k / parameter_step) - param_lower_bound] = (len(w_t))
+                         int(k / parameter_step) - param_lower_bound] = \
+                    (len(w_t))
                 learned_maps.append(learned_map[-1])
                 optimal_paths.append(optimal_path[-1])
                 weights.append(w_t[-1])
 
                 # Calculate loss
-                for n, op in enumerate(optimal_path[-1]):
-                    if learning == 'learch':
-                        loss[j, int(i / parameter_step) - param_lower_bound,
-                             int(k / parameter_step) - param_lower_bound] += \
-                            np.sum(original_costmap[np.asarray(paths[n]).T[:][0],
-                                                    np.asarray(paths[n]).T[:][1]]) \
-                            - np.sum(original_costmap[np.asarray(op).T[:][0],
-                                                      np.asarray(op).T[:][1]])
-                    elif learning == 'maxEnt':
-                        loss[j, int(i / parameter_step) - param_lower_bound,
-                             int(k / parameter_step) - param_lower_bound] += \
-                            np.sum(learned_map[-1][np.asarray(paths[n]).T[:][0],
-                                                   np.asarray(paths[n]).T[:][1]])
-                # Add regularization factor to loss
+                x = int(i / parameter_step) - param_lower_bound
+                y = int(k / parameter_step) - param_lower_bound
                 if learning == 'learch':
-                    loss[j, int(i / parameter_step) - param_lower_bound,
-                         int(k / parameter_step) - param_lower_bound] = \
-                        (loss[j, int(i / parameter_step) - param_lower_bound,
-                              int(k / parameter_step) - param_lower_bound] /
-                         nb_samples) + (l._l2_regularizer +
-                                        l._proximal_regularizer) \
-                        * np.linalg.norm(w_t[-1])
+                    loss[j, x, y] = get_learch_loss(original_costmap,
+                                                    optimal_path[-1], paths,
+                                                    nb_samples,
+                                                    l._l2_regularizer,
+                                                    l._proximal_regularizer,
+                                                    w_t[-1])
                 elif learning == 'maxEnt':
-                    loss[j, int(i / parameter_step) - param_lower_bound,
-                         int(k / parameter_step) - param_lower_bound] = \
-                        (loss[j, int(i / parameter_step) - param_lower_bound,
-                              int(k / parameter_step) - param_lower_bound] /
-                         nb_samples) + np.linalg.norm(w_t[-1])
+                    loss[j, x, y] = get_maxEnt_loss(learned_map[-1], paths,
+                                                    nb_samples, w_t[-1])
 
             except KeyboardInterrupt:
                 break
@@ -136,15 +128,15 @@ for j in range(nb_runs):
                 continue
 
 if param == 'regularization':
-    x1 = (1 / np.power(10, x1))
-    x2 = (1 / np.power(10, x2))
-    # x1 = np.flipud(x1)
-    # x2 = np.flipud(x2)
+    x1 = (10 / np.power(10, x1))
+    x2 = (10 / np.power(10, x2))
+    x1 = np.flipud(x1)
+    x2 = np.flipud(x2)
     # loss = np.flipud(loss)
 elif param == 'step size':
     x2 = x2 / 10
-elif param == 'loss':
-    x2 = x2 / 10
+# elif param == 'loss':
+#    x1 = x1 / 10
 
 duration = time.time() - t
 file.write("duration: {}".format(duration) + '\n')
