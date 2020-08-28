@@ -11,15 +11,17 @@ from my_learning.max_ent import *
 from my_learning.learch import *
 
 show_result = 'SAVE'
-average_cost = False
 # set the learning method to evaluate
 # choose between learch and maxEnt
 learning = 'learch'
 nb_samples_l = 1
-nb_samples_u = 2
+nb_samples_u = 100
+nb_environments = 1
+nb_predictions = 100
 nb_runs = 1
-nb_predictions = 5
-exponentiated_gd = True
+range_test_env = np.arange(1, 2)
+foldername = '{}_test'.format(learning, nb_environments,
+                              nb_samples_l, nb_samples_u, nb_predictions)
 
 workspace = Workspace()
 
@@ -42,32 +44,47 @@ optimal_paths = []
 weights = []
 original_costmaps = []
 
-directory = home + '/../prediction/{}_{}runs_{}-{}samples'.format(learning,
-                                                                  nb_runs,
-                                                                  nb_samples_l,
-                                                                  nb_samples_u)
+directory = home + '/../results/prediction/' + foldername
 Path(directory).mkdir(parents=True, exist_ok=True)
 file = open(directory + "/metadata.txt", "w")
 file.write("date: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
            + '\n')
 file.write("number of predictions: " + str(nb_predictions) + '\n')
 
-t = time.time()
-# For each environment
+t_0 = time.time()
+
 for j in range(nb_runs):
     print("run: ", j)
     file.write("run: " + str(j) + '\n')
-    w, original_costmap, starts, targets, paths = load_environment("environment"
-                                                                   + str(j))
-    nb_points, nb_rbfs, sigma, _ = load_environment_params(
-        "environment" + str(j))
-    pixel_map = workspace.pixel_map(nb_points)
-    centers = workspace.box.meshgrid_points(nb_rbfs)
-    file.write("environment: " + "environment" + str(j) + '\n')
-    original_costmaps.append(original_costmap)
+
+    starts = [None] * (nb_samples_u)
+    targets = [None] * (nb_samples_u)
+    paths = [None] * (nb_samples_u)
+    r = math.floor(nb_samples_u / nb_environments)
+    # Create training set
+    for k in range(nb_environments):
+        file.write("training environment: " + "environment" + str(k) + '\n')
+        w, original_costmap, s, t, p = load_environment("environment" + str(k))
+        nb_points, nb_rbfs, sigma, _ = load_environment_params("environment"
+                                                               + str(k))
+        centers = workspace.box.meshgrid_points(nb_rbfs)
+        original_costmaps.append(original_costmap)
+        # Add paths to training set
+        starts[:nb_samples_u - r * k] = s[:r]
+        targets[:nb_samples_u - r * k] = t[:r]
+        paths[:nb_samples_u - r * k] = p[:r]
+
     # Create test set
-    p_starts, p_targets, p_paths = plan_paths(nb_predictions, original_costmap,
-                                              workspace)
+    for k in range_test_env:
+        print("k", k)
+        file.write("test environment: " + "environment" + str(k) + '\n')
+        p_w, p_costmap, p_starts, p_targets, p_paths = load_environment(
+            "environment" + str(k))
+        a = int(nb_samples_u / nb_environments)
+        b = math.floor(nb_predictions / len(range_test_env))
+        p_starts = p_starts[a:a + nb_predictions - (k - range_test_env[0]) * b]
+        p_targets = p_targets[a:a + nb_predictions - (k - range_test_env[0]) * b]
+        p_paths = p_paths[a:a + nb_predictions - (k - range_test_env[0]) * b]
 
     # For each number of demonstrations
     for i in range(nb_samples_l, nb_samples_u + 1):
@@ -77,7 +94,7 @@ for j in range(nb_runs):
         if learning == 'learch':
             l = Learch2D(nb_points, centers, sigma, paths[:i],
                          starts[:i], targets[:i], workspace)
-            l.exponentiated_gd = exponentiated_gd
+            l.exponentiated_gd = True
             learned_map, optimal_path, w_t = l.solve()
         elif learning == 'maxEnt':
             l = MaxEnt(nb_points, centers, sigma,
@@ -101,7 +118,8 @@ for j in range(nb_runs):
                 l._l2_regularizer, l._proximal_regularizer, w_t[-1])
         elif learning == 'maxEnt':
             training_loss[j, i - nb_samples_l] = get_maxEnt_loss(learned_map[-1],
-                                                                 paths[:i], i, w_t[-1])
+                                                                 paths[:i], i,
+                                                                 w_t[-1])
 
         training_edt[j, i - nb_samples_l] = get_edt_loss(nb_points,
                                                          optimal_paths[-1],
@@ -154,7 +172,7 @@ plot_avg_over_runs(x, nb_runs, directory + "/learning_time.png",
                    time=learning_time)
 plot_avg_over_runs(x, nb_runs, directory + "/prediction_time.png",
                    prediction_time=prediction_time)
-show_multiple(learned_maps, original_costmap, workspace, show_result,
+show_multiple(learned_maps, original_costmaps, workspace, show_result,
               directory=directory + '/costmaps.png')
 
 results = directory + '/results.npz'
@@ -163,6 +181,6 @@ np.savez(results, x=x, nll=nll, test_loss=test_loss,
          training_edt=training_edt, costs=error_cost, nb_steps=nb_steps,
          learning_time=learning_time, prediction_time=prediction_time)
 
-file.write("duration: {}".format(time.time() - t) + '\n')
+file.write("duration: {}".format(time.time() - t_0) + 'sec \n')
 
 file.close()
