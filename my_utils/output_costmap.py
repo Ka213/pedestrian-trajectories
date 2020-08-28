@@ -4,10 +4,13 @@ from textwrap import wrap
 import numpy as np
 from matplotlib import cm
 import matplotlib
+import matplotlib.animation as animation
 import math
+import subprocess
 # print(matplotlib.get_backend())
 from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
+import mpl_toolkits.mplot3d.axes3d as p3
 import pyrieef.rendering.workspace_renderer as render
 
 
@@ -122,7 +125,7 @@ def show(costmap, workspace, show_result, starts=None, targets=None, paths=None,
         viewer.save_figure(directory)
 
 
-def show_iteration(costmaps, original_costmap, workspace, show_result,
+def show_iteration(costmaps, original_costmaps, workspace, show_result,
                    weights=None, starts=None, targets=None, paths=None,
                    optimal_paths=None, title=None, directory=None):
     """ Show multiple maps and optional optimal example trajectories,
@@ -130,16 +133,16 @@ def show_iteration(costmaps, original_costmap, workspace, show_result,
     """
     pixel_map = workspace.pixel_map(costmaps[0].shape[0])
     rows = len(costmaps) + 1
-    cols = len(paths)
+    cols = max(len(paths), len(original_costmaps))
     viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True,
                                     rows=rows, cols=cols,
                                     scale=rows / (rows * cols))
 
-    viewer.draw_ws_img(original_costmap, interpolate="none")
-    viewer._ax.set_title('Original Costmap', size=32 / cols)
-    viewer.remove_axis()
-    for j in range(cols):
-        viewer.set_drawing_axis(j)
+    for i in range(cols):
+        viewer.set_drawing_axis(i)
+        if i < len(original_costmaps):
+            viewer.draw_ws_img(original_costmaps[i], interpolate="none")
+            viewer._ax.set_title('Training Costmap', size=32 / cols)
         viewer.remove_axis()
 
     for i in range(rows - 1):
@@ -170,39 +173,39 @@ def show_iteration(costmaps, original_costmap, workspace, show_result,
         viewer.save_figure(directory)
 
 
-def show_multiple(costmaps, original_costmap, workspace, show_result,
+def show_multiple(costmaps, original_costmaps, workspace, show_result,
                   weights=None, starts=None,
-                  targets=None, paths=None, optimal_paths=None, step=1,
+                  targets=None, paths=None, optimal_paths=None,
                   title=None, directory=None):
     """ Show multiple maps and optional optimal example trajectories,
         optimal trajectories, indication of weights, D or policy
     """
-    pixel_map = workspace.pixel_map(original_costmap.shape[0])
-    rows = math.ceil(math.sqrt(len(costmaps) / step + 1))
-    cols = math.ceil((len(costmaps) / step + 1) / rows)
+    pixel_map = workspace.pixel_map(original_costmaps[0].shape[0])
+    cols = max(math.ceil(math.sqrt(len(costmaps))), len(original_costmaps))
+    rows = math.ceil(len(costmaps) / cols) + 1
     viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True,
                                     rows=rows, cols=cols,
                                     scale=rows / (rows * cols))
+    for i in range(cols):
+        viewer.set_drawing_axis(i)
+        if i < len(original_costmaps):
+            viewer.draw_ws_img(original_costmaps[i], interpolate="none")
+            viewer._ax.set_title('Training Costmap', size=32 / cols)
+        viewer.remove_axis()
 
-    viewer.draw_ws_img(original_costmap, interpolate="none")
-    viewer._ax.set_title('Original Costmap', size=32 / cols)
-    viewer.remove_axis()
-
-    for i in range(rows * cols - 1):
-        viewer.set_drawing_axis(i + 1)
-        if i < math.floor(len(costmaps) / step):
-            viewer.draw_ws_img(costmaps[i * step], interpolate="none")
-            viewer._ax.set_title('Learned Costmap: \n '
-                                 '{}. '.format(i * step + 1), size=32 / cols)
-
+    for i in range(cols, rows * cols):
+        viewer.set_drawing_axis(i)
+        if i < len(costmaps) + cols:
+            viewer.draw_ws_img(costmaps[i - cols], interpolate="none")
+            viewer._ax.set_title('Learned Costmap: \n {}.'.format(i + 1 - cols),
+                                 size=32 / cols)
             if weights is not None:
-                show_weights(viewer, weights[i * step], workspace)
+                show_weights(viewer, weights[i - cols], workspace)
             if paths is not None:
                 show_example_trajectories(paths, pixel_map, starts, targets,
                                           viewer)
             if optimal_paths is not None:
-                show_optimal_paths(optimal_paths[i * step], pixel_map, viewer)
-
+                show_optimal_paths(optimal_paths[i - cols], pixel_map, viewer)
         viewer.remove_axis()
     viewer._fig.tight_layout()
 
@@ -213,6 +216,125 @@ def show_multiple(costmaps, original_costmap, workspace, show_result,
         viewer.show_once()
     elif show_result == 'SAVE':
         viewer.save_figure(directory)
+
+
+def show_3D(costmap, workspace, show_result, starts=None, targets=None,
+            paths=None, optimal_paths=None, directory=None):
+    pixel_map = workspace.pixel_map(costmap.shape[0])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    x = np.arange(costmap.shape[0])
+    x_1, x_2 = np.meshgrid(x, x)
+    surf = ax.plot_surface(x_1, x_2, costmap.T, cmap=cm.magma, shade=False,
+                           alpha=0.7)
+    if paths is not None:
+        for s, t, p in zip(starts, targets, paths):
+            c = cmap(np.random.rand())
+            x = np.asarray(p)[:, 0]
+            y = np.asarray(p)[:, 1]
+            path = ax.plot3D(x, y, costmap[x, y], color=c)
+            s = pixel_map.world_to_grid(s)
+            t = pixel_map.world_to_grid(t)
+            start = ax.scatter3D(s[0], s[1], costmap[s[0], s[1]], color=c)
+            target = ax.scatter3D(t[0], t[1], costmap[t[0], t[1]], color=c)
+    if optimal_paths is not None:
+        for op in zip(optimal_paths):
+            c = cmap(np.random.rand())
+            x = np.asarray(op)[:, 0]
+            y = np.asarray(op)[:, 1]
+            path = ax.plot3D(x, y, costmap[x, y], color=c)
+
+    if show_result == 'SHOW':
+        plt.show()
+    elif show_result == 'SAVE':
+        plt.savefig(directory)
+
+
+def animated_plot(maps, workspace, show_result, starts=None, targets=None,
+                  paths=None, optimal_paths=None, directory=None):
+    def update_plot(frame_number, maps, s, t, p, op, surface, plot_paths):
+        surface[0].remove()
+        surface[0] = ax.plot_surface(x_1, x_2, maps[frame_number].T, cmap="magma",
+                                     alpha=0.6)
+        k = 0
+        if len(p) > 0:
+            for i, (path_u, start_u, target_u) in enumerate(zip(p, s, t)):
+                plot_paths[i * 3].set_data(path_u[:, 0], path_u[:, 1])
+                plot_paths[i * 3].set_3d_properties(
+                    maps[frame_number][path_u[:, 0], path_u[:, 1]])
+                plot_paths[i * 3 + 1].set_data([start_u[0]], [start_u[1]])
+                plot_paths[i * 3 + 1].set_3d_properties(
+                    [maps[frame_number][start_u[0], start_u[1]]])
+                plot_paths[i * 3 + 2].set_data([target_u[0]], [target_u[1]])
+                plot_paths[i * 3 + 2].set_3d_properties(
+                    [maps[frame_number][target_u[0], target_u[1]]])
+                k = i * 3 + 2 + 1
+
+        if len(op) > 0:
+            for j, path_u in enumerate(op[frame_number]):
+                x = np.asarray(path_u)[:, 0]
+                y = np.asarray(path_u)[:, 1]
+                plot_paths[j + k].set_data(x, y)
+                plot_paths[j + k].set_3d_properties(maps[frame_number][x, y])
+        return surface, plot_paths
+
+    fps = 5  # frame per sec
+    pixel_map = workspace.pixel_map(maps[0].shape[0])
+    x = np.arange(maps[0].shape[0])
+    x_1, x_2 = np.meshgrid(x, x)
+    fig = plt.figure()
+    ax = p3.Axes3D(fig)
+    maps = np.asarray(maps)
+    surface = [ax.plot_surface(x_1, x_2, maps[0].T, cmap=cm.magma, shade=False,
+                               alpha=0.6)]
+    ax.set_zlim(max(0, np.amin(maps)), np.amax(maps))
+
+    c = cmap(np.random.rand())
+    s = []
+    t = []
+    p = []
+    plot_paths = []
+    if paths is not None:
+        for i, (start, target, path) in enumerate(zip(starts, targets, paths)):
+            start = pixel_map.world_to_grid(start)
+            start = start.astype(int)
+            s.append(start)
+            target = pixel_map.world_to_grid(target)
+            t.append(target)
+            path = np.asarray(path)
+            p.append(path)
+            plot_paths.append(ax.plot(path[:, 0], path[:, 1],
+                                      maps[0][path[:, 0], path[:, 1]], color=c)[0])
+            plot_paths.append(ax.plot([start[0]], [start[1]],
+                                      [maps[0][start[0], start[1]]], marker='o',
+                                      color=c)[0])
+            plot_paths.append(ax.plot([target[0]], [target[1]],
+                                      [maps[0][target[0], target[1]]], marker='o',
+                                      color=c)[0])
+
+    op = []
+    if optimal_paths is not None:
+        for optimal_path in optimal_paths[0]:
+            optimal_path = np.asarray(optimal_path)
+            plot_paths.append(ax.plot(optimal_path[:, 0], optimal_path[:, 1],
+                                      maps[0][optimal_path[:, 0], optimal_path[:, 1]],
+                                      color=c)[0])
+        op = np.asarray(optimal_paths)
+
+    ani = animation.FuncAnimation(fig, update_plot, maps.shape[0],
+                                  fargs=(maps, s, t, p, op, surface, plot_paths),
+                                  interval=1000 / fps)
+    if show_result == 'SHOW':
+        plt.show()
+    elif show_result == 'SAVE':
+        ani.save(directory + '.mp4', writer='ffmpeg', fps=fps)
+        ani.save(directory + '.gif', writer='imagemagick', fps=fps)
+        # reduce the size of the GIF file
+        cmd = 'magick convert {}.gif -fuzz 5%% -layers Optimize {}_r.gif' \
+            .format(directory, directory)
+        subprocess.check_output(cmd)
+
+    return ani
 
 
 def save_environment(filename, nb_points, nb_rbfs, sigma, nb_samples, w,
@@ -290,6 +412,27 @@ def set_maxEnt_params(directory, m):
     m._stepsize_scalar = file['stepsize_scalar']
     m._N = file['N']
     return m
+
+
+def save_results(directory, maps, optimal_paths, w_t, starts=None, targets=None,
+                 paths=None):
+    """ Save the results of the learning algorithm """
+    file = directory + '.npz'
+    np.savez(file, maps=maps, optimal_paths=optimal_paths, w=w_t, paths=paths,
+             starts=starts, targets=targets)
+    return file
+
+
+def get_results(directory):
+    """ Get the saved results of the learning algoithm """
+    file = np.load(directory, allow_pickle=True)
+    maps = file['maps']
+    optimal_paths = file['optimal_paths']
+    w_t = file['w']
+    starts = file['starts']
+    targets = file['targets']
+    paths = file['paths']
+    return maps, optimal_paths, w_t, starts, targets, paths
 
 
 cmap = plt.get_cmap('viridis')
