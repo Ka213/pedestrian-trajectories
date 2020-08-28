@@ -6,6 +6,6 @@ show_image = 'SHOW'
 name = 'maxEnt_search_step size_5r_1l_15u'
 name = 'results/learch_search_regularization_1r_0l_10u'
 
-directory = home + '/../data/' + name + '.npz'
-directoryToSave = home + '/../figures/' + name + '.png'
+directory = home + '/../resutls/hyperparametersearch2D/' + name + '.npz'
+directoryToSave = home + '/../results/hyperparametersearch2D/' + name + '.png'
 plot_data(show_image, directory, directoryToSave)

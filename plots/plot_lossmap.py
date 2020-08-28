@@ -25,5 +25,5 @@ lossmap = scaled_hamming_loss_map(paths[0],
 # Output lossmap
 title = 'scaled hamming loss map; loss_scalar: {}, ' \
         'loss_stddev: {}'.format(loss_scalar, loss_stddev)
-path = home + '/../figures/lossmap_{}.pdf'.format(4)
+path = home + '/../results/figures/lossmap_{}.pdf'.format(4)
 show(lossmap, workspace, show_result, directory=path, title=title)

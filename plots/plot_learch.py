@@ -34,8 +34,8 @@ save_results(home + '/../results/learning/learch_{}samples'.format(nb_samples),
 show(maps[-1], workspace, show_result)
 show(original_costmap, workspace, show_result, starts=starts,
      targets=targets, paths=paths, optimal_paths=optimal_paths[-1])
-show_multiple(maps, original_costmap, workspace, show_result)
-show_multiple(maps, original_costmap, workspace, show_result, starts=starts,
+show_multiple(maps, [original_costmap], workspace, show_result)
+show_multiple(maps, [original_costmap], workspace, show_result, starts=starts,
               targets=targets, paths=paths, optimal_paths=optimal_paths)
-show_iteration(maps, original_costmap, workspace, show_result, starts=starts,
+show_iteration(maps, [original_costmap], workspace, show_result, starts=starts,
                targets=targets, paths=paths, optimal_paths=optimal_paths)

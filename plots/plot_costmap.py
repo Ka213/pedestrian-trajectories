@@ -26,12 +26,12 @@ show_3D(costmap, workspace, show_result, starts=starts[:nb_samples],
 if with_trajectories:
     title = 'costmap from {} differently weighted radial basis ' \
             'functions with sample trajectories'.format(nb_rbfs)
-    directory = home + '../figures/costmap_{}rbf_with_samples.png'. \
+    directory = home + '../results/figures/costmap_{}rbf_with_samples.png'. \
         format(nb_rbfs)
     show(costmap, workspace, show_result, directory=directory,
          starts=starts, targets=targets, paths=paths)
 else:
     title = 'costmap from {} differently weighted ' \
             'radial basis functions'.format(nb_rbfs)
-    directory = home + '../figures/costmap_{}rbf.png'.format(nb_rbfs)
+    directory = home + '../results/figures/costmap_{}rbf.png'.format(nb_rbfs)
     show(costmap, workspace, show_result, directory=directory, title=title)

@@ -24,14 +24,14 @@ D = get_expected_edge_frequency(P, original_costmap, N, nb_points,
                                 targets, paths, workspace)
 
 show(D, workspace, show_result, starts=starts, targets=targets, paths=paths,
-     directory=home + '/../figures/stateFrequency.png',
+     directory=home + '/../results/figures/stateFrequency.png',
      title="expected state frequeny")
 
 D = - D - np.min(-D)
 f = np.tensordot(Phi, D)
 
 map = get_costmap(nb_points, centers, sigma, f, workspace)
-show_multiple([map], original_costmap, workspace, show_result,
+show_multiple([map], [original_costmap], workspace, show_result,
               # starts=starts, targets=targets, paths=paths,
-              directory=home + '/../figures/stateFrequencyCostmap.png',
+              directory=home + '/../results/figures/stateFrequencyCostmap.png',
               title='expected state frequency map')

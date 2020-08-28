@@ -2,7 +2,7 @@ from common_import import *
 
 from my_utils.output_analysis import *
 
-path = home + '/../prediction/'
+path = home + '/../results/prediction/'
 
 directory_learch = path + "/learch_1runs_1-100samples_100predictions" \
                    + "/results.npz"

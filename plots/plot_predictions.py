@@ -54,12 +54,12 @@ elif learning == 'maxEnt':
 
 # Output predictions
 
-show_iteration([learned_map[-1]], original_costmap, workspace, show_result,
+show_iteration([learned_map[-1]], [original_costmap], workspace, show_result,
                starts=p_starts, targets=p_targets, paths=p_paths,
-               optimal_paths=[predictions], directory=home +
-                                                      '/../figures/{}_{}predictions.png'.format(learning,
-                                                                                                nb_predictions))
+               optimal_paths=[predictions], directory=
+               home + '/../results/figures/{}_{}predictions.png'.format(learning,
+                                                                        nb_predictions))
 
 # show_multiple(learned_map, original_costmap, workspace, show_result,
-#              directory= home +  '/../figures/{}_{}predictions.png'.format(
-#                  learning, nb_predictions))
+#              directory= home +  '/../results/figures/{}_{}predictions.png'.
+#              format(learning, nb_predictions))

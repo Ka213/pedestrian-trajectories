@@ -22,7 +22,7 @@ f = get_empirical_feature_count(paths, Phi)
 f = - f - np.min(-f)
 
 map = get_costmap(nb_points, centers, sigma, f, workspace)
-show_multiple([map], original_costmap, workspace, show_result,
+show_multiple([map], [original_costmap], workspace, show_result,
               # starts=starts, targets=targets, paths=paths,
-              directory=home + '/../figures/feature_count.png',
+              directory=home + '/../results/figures/feature_count.png',
               title="empirical feature count")

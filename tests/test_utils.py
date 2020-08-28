@@ -80,7 +80,7 @@ def test_expected_edge_frequency():
     assert (np.absolute(f - w)).sum() < len(w) * 0.5
 
     map = get_costmap(nb_points, centers, sigma, f, workspace)
-    show_multiple([map], original_costmap, workspace, show_result,
+    show_multiple([map], [original_costmap], workspace, show_result,
                   # starts=starts, targets=targets, paths=paths,
                   title="expected state visitation frequency")
 
@@ -106,7 +106,7 @@ def test_get_empirical_feature_count():
     assert (np.absolute(f - w)).sum() < len(w) * 0.5
 
     map = get_costmap(nb_points, centers, sigma, f, workspace)
-    show_multiple([map], original_costmap, workspace, show_result,
+    show_multiple([map], [original_costmap], workspace, show_result,
                   # starts=starts, targets=targets, paths=paths,
                   title="empirical feature counts")
 

@@ -34,7 +34,8 @@ save_results(home + '/../results/learning/maxEnt_{}samples'.format(nb_samples),
              learned_map, optimal_path, w_t, starts=starts, targets=targets,
              paths=paths)
 # Output learned costmaps
-show_multiple(learned_map, original_costmap, workspace, show_result,
-              directory=home + '/../figures/maxEnt.png')
+show_multiple(learned_map, [original_costmap], workspace, show_result,
+              directory=home + '/../results/figures/maxEnt.png')
 show(learned_map[-1], workspace, show_result, starts=starts, targets=targets,
-     paths=paths, directory=home + '/../figures/maxEnt_with_demonstrations.png')
+     paths=paths,
+     directory=home + '/../results/figures/maxEnt_with_demonstrations.png')

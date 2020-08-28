@@ -30,6 +30,8 @@ exponentiated_gd = True
 
 workspace = Workspace()
 
+directory = home + '/../figures/hyperparametersearch/'
+
 x = np.arange(param_lower_bound, param_upper_bound + 1, parameter_step)
 if param == 'l2 regularizer' or param == 'proximal regularizer':
     x = (1 / np.power(10, x))
@@ -132,14 +134,13 @@ if param == 'l2 regularizer' or param == 'proximal regularizer':
     loss = np.flipud(loss)
 
 # Plot loss
-directory = home + '/../figures/hyperparametersearch/search_{}_{}l_{}u.png' \
-    .format(param, param_lower_bound, param_upper_bound)
-plot_avg_over_runs(x, nb_runs, directory, loss=loss)
+plot_avg_over_runs(x, nb_runs, directory=directory + 'search_{}_{}l_{}u.png'
+                   .format(param, param_lower_bound, param_upper_bound),
+                   loss=loss)
 
 # Show learned costmaps for different number of samples
 show_multiple(learned_maps, original_costmap, workspace, show_result,
-              directory=home + '/../figures/hyperparametersearch/'
-                               'costmaps_search_{}.png'.format(param))
+              directory=directory + 'costmaps_search_{}.png'.format(param))
 
 duration = time.time() - t
 file.write("duration: {}".format(duration) + '\n')

@@ -46,7 +46,7 @@ file = open(home + "/../environment.txt", "a")
 file.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
 file.write(str(nb_runs) + '\n')
 
-data = home + '/../data/{}_search_{}_{}r_{}l_{}u.npz' \
+data = home + '/../results/hyperparametersearch2D/{}_search_{}_{}r_{}l_{}u.npz' \
     .format(learning, param, nb_runs, param_lower_bound, param_upper_bound)
 t = time.time()
 for j in range(nb_runs):
