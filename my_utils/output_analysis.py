@@ -119,96 +119,90 @@ def plot_data(show_image, directory, directoryToSave=None):
         plt.savefig(directoryToSave)
 
 
-def compare_learning(directory_1, directory_2, directory):
-    """ plot results of LEARCH and maxEnt into the same graph """
-    # Get LEARCH results
-    l = np.load(directory_1)
-    l_x = l['x']
-    l_nll = np.average(l['nll'], axis=0)
-    l_test_loss = np.average(l['test_loss'], axis=0)
-    l_training_loss = np.average(l['training_loss'], axis=0)
-    l_test_edt = np.average(l['test_edt'], axis=0)
-    l_training_edt = np.average(l['training_edt'], axis=0)
-    l_costs = np.average(l['costs'], axis=0)
-    l_nb_steps = np.average(l['nb_steps'], axis=0)
-    l_learning_time = np.average(l['learning_time'], axis=0)
-    l_prediction_time = np.average(l['prediction_time'], axis=0)
-    # Get maxEnt results
-    m = np.load(directory_2)
-    m_x = m['x']
-    m_nll = np.average(m['nll'], axis=0)
-    m_test_loss = np.average(m['test_loss'], axis=0)
-    m_training_loss = np.average(m['training_loss'], axis=0)
-    m_test_edt = np.average(m['test_edt'], axis=0)
-    m_training_edt = np.average(m['training_edt'], axis=0)
-    m_costs = np.average(m['costs'], axis=0)
-    m_nb_steps = np.average(m['nb_steps'], axis=0)
-    m_learning_time = np.average(m['learning_time'], axis=0)
-    m_prediction_time = np.average(m['prediction_time'], axis=0)
-    assert np.all(l_x == m_x)
+def add_subplot_plot(ax, x, y, name):
+    for y_i, name_i in zip(y, name):
+        ax.plot(x, y_i, label=name_i)
+
+
+def compare_learning(directories, directory):
+    """ plot results different predictions into the same graph """
+    l_x = []
+    l_nll = []
+    l_test_loss = []
+    l_training_loss = []
+    l_test_edt = []
+    l_training_edt = []
+    l_costs = []
+    l_nb_steps = []
+    l_learning_time = []
+    l_prediction_time = []
+    l_name = []
+    # Get each result
+    for i, d in enumerate(directories):
+        l = np.load(d)
+        l_x.append(l['x'])
+        l_nll.append(np.average(l['nll'], axis=0))
+        l_test_loss.append(np.average(l['test_loss'], axis=0))
+        l_training_loss.append(np.average(l['training_loss'], axis=0))
+        l_test_edt.append(np.average(l['test_edt'], axis=0))
+        l_training_edt.append(np.average(l['training_edt'], axis=0))
+        l_costs.append(np.average(l['costs'], axis=0))
+        l_nb_steps.append(np.average(l['nb_steps'], axis=0))
+        l_learning_time.append(np.average(l['learning_time'], axis=0))
+        l_prediction_time.append(np.average(l['prediction_time'], axis=0))
+        l_name.append(d.split('/')[-2])
     # Plot each measurement in one graph
-    l = directory_1.split('/')[-2]
-    m = directory_2.split('/')[-2]
     fig = plt.figure(figsize=(20, 20))
     ax = fig.add_subplot(331)
-    ax.plot(l_x, l_nll, label=l)
-    ax.plot(l_x, m_nll, label=m)
+    add_subplot_plot(ax, l_x[0], l_nll, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('negative log likelihood')
     ax.legend(loc="upper right")
     ax.set_title("NLL")
     ax = fig.add_subplot(332)
-    ax.plot(l_x, l_test_loss, label=l)
-    ax.plot(l_x, m_test_loss, label=m)
+    add_subplot_plot(ax, l_x[0], l_test_loss, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('test loss')
     ax.legend(loc="upper right")
     ax.set_title("test loss")
     ax = fig.add_subplot(333)
-    ax.plot(l_x, l_training_loss, label=l)
-    ax.plot(l_x, m_training_loss, label=m)
+    add_subplot_plot(ax, l_x[0], l_training_loss, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('training loss')
     ax.legend(loc="upper right")
     ax.set_title("training loss")
     ax = fig.add_subplot(334)
-    ax.plot(l_x, l_test_edt, label=l)
-    ax.plot(l_x, m_test_edt, label=m)
+    add_subplot_plot(ax, l_x[0], l_test_edt, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('test euclidean distance transform')
     ax.legend(loc="upper right")
     ax.set_title("test euclidean distance transform")
     ax = fig.add_subplot(335)
-    ax.plot(l_x, l_training_edt, label=l)
-    ax.plot(l_x, m_training_edt, label=m)
+    add_subplot_plot(ax, l_x[0], l_training_edt, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('training euclidean distance transform')
     ax.legend(loc="upper right")
     ax.set_title("training euclidean distance transform")
     ax = fig.add_subplot(336)
-    ax.plot(l_x, l_nb_steps, label=l)
-    ax.plot(l_x, m_nb_steps, label=m)
+    add_subplot_plot(ax, l_x[0], l_nb_steps, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('iteration steps')
     ax.legend(loc="upper right")
     ax.set_title("iteration steps")
     ax = fig.add_subplot(337)
-    ax.plot(l_x, l_learning_time, label=l)
-    ax.plot(l_x, m_learning_time, label=m)
+    add_subplot_plot(ax, l_x[0], l_learning_time, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('learning time in sec')
     ax.legend(loc="upper right")
     ax.set_title("learning time")
     ax = fig.add_subplot(338)
-    ax.plot(l_x, l_prediction_time, label=l)
-    ax.plot(l_x, m_prediction_time, label=m)
+    add_subplot_plot(ax, l_x[0], l_prediction_time, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('inference time in sec')
     ax.legend(loc="upper right")
     ax.set_title("inference time")
     ax = fig.add_subplot(339)
-    ax.plot(l_x, l_costs, label=l)
-    ax.plot(l_x, m_costs, label=m)
+    add_subplot_plot(ax, l_x[0], l_costs, l_name)
     ax.set_xlabel('# of demonstrations used')
     ax.set_ylabel('value difference of the costmaps')
     ax.legend(loc="upper right")
