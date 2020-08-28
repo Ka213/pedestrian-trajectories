@@ -26,6 +26,10 @@ maps, optimal_paths, w_t = l.solve()
 loss = get_learch_loss(original_costmap, optimal_paths[-1], paths, nb_samples,
                        l._l2_regularizer, l._proximal_regularizer, w_t[-1])
 print("loss: ", loss)
+save_results(home + '/../results/learning/learch_{}samples'.format(nb_samples),
+             maps, optimal_paths, w_t, starts=starts, targets=targets,
+             paths=paths)
+
 # Output learned costmaps
 show(maps[-1], workspace, show_result)
 show(original_costmap, workspace, show_result, starts=starts,

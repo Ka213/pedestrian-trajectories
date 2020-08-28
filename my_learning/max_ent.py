@@ -13,10 +13,10 @@ class MaxEnt():
         self.workspace = workspace
 
         # Parameters to compute the step size
-        self._learning_rate = 0.1
+        self._learning_rate = 0.14
         self._stepsize_scalar = 20
 
-        self._N = 199
+        self._N = 191
 
         # Parameters to compute the cost map from RBFs
         self.nb_points = nb_points
@@ -36,8 +36,8 @@ class MaxEnt():
             get_transition_probabilities(self.costmap, self.nb_points)
 
         # Data structures to save the progress of MaxEnt in each iteration
-        self.maps = []
-        self.weights = []
+        self.maps = [self.costmap]
+        self.weights = [self.w]
 
     def one_step(self, t):
         """ Compute one gradient descent step """
@@ -64,10 +64,11 @@ class MaxEnt():
         w_old = copy.deepcopy(self.w)
         e = 10
         i = 0
-        while e > 1:
+        while e > 0.004:
             self.one_step(i)
             # print("w: ", self.w)
-            e = (np.absolute(self.w - w_old)).sum()
+            # e = (np.absolute(self.w - w_old)).sum()
+            e = (np.amax(self.w - w_old)).sum()
             print("convergence: ", e)
             w_old = copy.deepcopy(self.w)
             i += 1

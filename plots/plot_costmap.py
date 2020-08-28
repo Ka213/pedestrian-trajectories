@@ -16,7 +16,11 @@ workspace = Workspace()
 np.random.seed(1)
 
 w, costmap, starts, targets, paths = \
-    create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace)
+    create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
+                              workspace)
+
+show_3D(costmap, workspace, show_result, starts=starts[:nb_samples],
+        targets=targets[:nb_samples], paths=paths[:nb_samples])
 
 # Output costmap
 if with_trajectories:

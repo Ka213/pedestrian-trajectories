@@ -30,6 +30,9 @@ _, _, optimal_path = plan_paths(nb_samples, learned_map[-1],
 loss = get_maxEnt_loss(learned_map[-1], paths, nb_samples,
                        w_t[-1])
 print("loss: ", loss)
+save_results(home + '/../results/learning/maxEnt_{}samples'.format(nb_samples),
+             learned_map, optimal_path, w_t, starts=starts, targets=targets,
+             paths=paths)
 # Output learned costmaps
 show_multiple(learned_map, original_costmap, workspace, show_result,
               directory=home + '/../figures/maxEnt.png')

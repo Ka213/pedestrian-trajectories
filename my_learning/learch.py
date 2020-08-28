@@ -64,6 +64,9 @@ class Learch2D(Learch):
             self.w = np.log(np.ones(len(self.centers)))
         self.costmap = get_costmap(
             self.nb_points, self.centers, self.sigma, self.w, self.workspace)
+        self.optimal_paths = [self.sample_trajectories]
+        self.maps = [self.costmap]
+        self.weights = [self.w]
 
     def planning(self):
         """ Compute the optimal path for each start and
@@ -171,7 +174,7 @@ class Learch2D(Learch):
         w_old = copy.deepcopy(self.w)
         e = 10
         i = 0
-        while e > 0.1:
+        while e > 0.04:
             self.one_step(i)
             # print("w: ", self.w)
             e = np.amax(np.absolute(self.w - w_old))
