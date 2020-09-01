@@ -59,11 +59,10 @@ for j in range(nb_runs):
     print("run: ", j)
     np.random.seed(j)
 
-    w, original_costmap, starts, targets, paths = \
-        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
-                                  workspace)
+    w, original_costmap, starts, targets, paths, centers = \
+        create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
+                        workspace)
     file.write(str(w) + '\n')
-    centers = workspace.box.meshgrid_points(nb_rbfs)
 
     for i in range(param_lower_bound, param_upper_bound + 1, parameter_step):
         print('{} parameter'.format(i))

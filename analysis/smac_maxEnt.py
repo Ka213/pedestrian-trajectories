@@ -22,11 +22,9 @@ def maxEnt(x):
 
     workspace = Workspace()
 
-    w, original_costmap, starts, targets, paths = \
-        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
-                                  workspace)
-
-    centers = workspace.box.meshgrid_points(nb_rbfs)
+    w, original_costmap, starts, targets, paths, centers = \
+        create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
+                        workspace)
 
     # Learn costmap
     a = MaxEnt(nb_points, centers, sigma, paths, starts, targets, workspace)

@@ -64,10 +64,10 @@ for j in range(nb_runs):
     # Create training set
     for k in range(nb_environments):
         file.write("training environment: " + "environment" + str(k) + '\n')
-        w, original_costmap, s, t, p = load_environment("environment" + str(k))
+        w, original_costmap, s, t, p, centers = \
+            load_environment("environment_sample_centers" + str(k))
         nb_points, nb_rbfs, sigma, _ = load_environment_params("environment"
                                                                + str(k))
-        centers = workspace.box.meshgrid_points(nb_rbfs)
         original_costmaps.append(original_costmap)
         # Add paths to training set
         starts[:nb_samples_u - r * k] = s[:r]
@@ -78,8 +78,8 @@ for j in range(nb_runs):
     for k in range_test_env:
         print("k", k)
         file.write("test environment: " + "environment" + str(k) + '\n')
-        p_w, p_costmap, p_starts, p_targets, p_paths = load_environment(
-            "environment" + str(k))
+        p_w, p_costmap, p_starts, p_targets, p_paths, p_centers = load_environment(
+            "environment_sample_centers" + str(k))
         a = int(nb_samples_u / nb_environments)
         b = math.floor(nb_predictions / len(range_test_env))
         p_starts = p_starts[a:a + nb_predictions - (k - range_test_env[0]) * b]

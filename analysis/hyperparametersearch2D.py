@@ -53,15 +53,10 @@ for j in range(nb_runs):
     print("run: ", j)
     np.random.seed(j)
 
-    # Create costmap with rbfs
-    w = np.random.random(nb_rbfs ** 2)
+    w, original_costmap, starts, targets, paths, centers = \
+        create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
+                        workspace)
     file.write(str(w) + '\n')
-    centers = workspace.box.meshgrid_points(nb_rbfs)
-    original_costmap = get_costmap(nb_points, centers, sigma, w, workspace)
-
-    # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples,
-                                        original_costmap, workspace)
 
     for i in range(param_lower_bound, param_upper_bound + 1, parameter_step):
         for k in range(param_lower_bound, param_upper_bound + 1, parameter_step):
