@@ -18,7 +18,9 @@ def get_edt(optimal_trajectory, sample_trajectory, nb_points):
     x_2 = np.asarray(sample_trajectory)[:, 1]
     occpancy_map[x_1, x_2] = 1
     distance = edt(occpancy_map)
-    return np.sum(distance[np.asarray(optimal_trajectory).astype(int)])
+    x_1 = np.asarray(optimal_trajectory)[:, 0]
+    x_2 = np.asarray(optimal_trajectory)[:, 1]
+    return np.sum(distance[x_1, x_2])
 
 
 def get_empirical_feature_count(sample_trajectories, Phi):
