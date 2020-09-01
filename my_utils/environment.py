@@ -31,13 +31,12 @@ def get_phi(nb_points, centers, sigma, workspace):
 
 def get_costmap(nb_points, centers, sigma, w, workspace):
     """ Returns the costmap of RBFs"""
-    costmap = np.tensordot(w,
-                           get_phi(nb_points, centers, sigma, workspace),
+    costmap = np.tensordot(w, get_phi(nb_points, centers, sigma, workspace),
                            axes=1)
     return costmap
 
 
-def create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace):
+def create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace):
     """ Returns a random environment """
     # Create costmap with rbfs
     w = np.random.random(nb_rbfs ** 2)
@@ -47,7 +46,26 @@ def create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace):
     # Plan example trajectories
     starts, targets, paths = plan_paths(nb_samples, costmap, workspace)
 
-    return w, costmap, starts, targets, paths
+    return w, costmap, starts, targets, paths, centers
+
+
+def create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples, workspace):
+    """ Returns a random environment """
+    # Create costmap with rbfs
+    w = [0.5488135, 0.71518937, 0.60276338, 0.54488318, 0.4236548, 0.64589411,
+         0.43758721, 0.891773, 0.96366276, 0.38344152, 0.79172504, 0.52889492,
+         0.56804456, 0.92559664, 0.07103606, 0.0871293, 0.0202184, 0.83261985,
+         0.77815675, 0.87001215, 0.97861834, 0.79915856, 0.46147936, 0.78052918,
+         0.11827443]  # np.random.random(nb_rbfs ** 2)
+    centers = []
+    for i in range(nb_rbfs ** 2):
+        centers.append(sample_collision_free(workspace))
+    costmap = get_costmap(nb_points, centers, sigma, w, workspace)
+
+    # Plan example trajectories
+    starts, targets, paths = plan_paths(nb_samples, costmap, workspace)
+
+    return w, costmap, starts, targets, paths, centers
 
 
 def plan_paths(nb_samples, costmap, workspace, starts=None, targets=None,

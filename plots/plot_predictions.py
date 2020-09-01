@@ -18,9 +18,8 @@ workspace = Workspace()
 np.random.seed(1)
 filename = "environment3"
 # Load saved environment
-w, original_costmap, s, t, p = load_environment(filename)
+w, original_costmap, s, t, p, centers = load_environment(filename)
 nb_points, nb_rbfs, sigma, _ = load_environment_params(filename)
-centers = workspace.box.meshgrid_points(nb_rbfs)
 # Traning set
 starts = s[:nb_samples]
 targets = t[:nb_samples]

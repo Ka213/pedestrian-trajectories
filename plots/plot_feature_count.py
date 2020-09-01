@@ -13,9 +13,8 @@ nb_samples = 100
 workspace = Workspace()
 np.random.seed(1)
 # Create random costmap
-w, original_costmap, starts, targets, paths = \
-    create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace)
-centers = workspace.box.meshgrid_points(nb_rbfs)
+w, original_costmap, starts, targets, paths, centers = \
+    create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace)
 Phi = get_phi(nb_points, centers, sigma, workspace)
 # Calculate feature counts
 f = get_empirical_feature_count(paths, Phi)

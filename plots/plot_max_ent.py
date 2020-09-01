@@ -10,14 +10,13 @@ nb_points = 40
 nb_rbfs = 5
 sigma = 0.1
 nb_samples = 1
-nb_steps = 5
 
 workspace = Workspace()
 np.random.seed(1)
 # Create random costmap
-w, original_costmap, starts, targets, paths = \
-    create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace)
-centers = workspace.box.meshgrid_points(nb_rbfs)
+w, original_costmap, starts, targets, paths, centers = \
+    create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace)
+
 # show(original_costmap, workspace, show_result)
 
 # Learn costmap

@@ -29,19 +29,16 @@ def show_example_trajectories(paths, pixel_map, starts, targets, viewer):
         viewer.draw_ws_point(t_w, color=c)
 
 
-def show_weights(viewer, weights, workspace):
+def show_weights(viewer, weights, centers):
     """ Draw an indication of where the weights have to increase and decrease
         draw a blue dot in the center of the weights which have to increase
         draw a green dot in the center of the weights which have to decrease
     """
-    a = int(math.sqrt(len(weights)))
-    centers = workspace.box.meshgrid_points(a)
-    weights = weights.reshape((a, a)).T.reshape(len(weights))
     for i, (w_t, c) in enumerate(zip(weights, centers)):
         if w_t > 0:
-            viewer.draw_ws_point(c, color='b', shape='x')
+            viewer.draw_ws_point([c[1], c[0]], color='b', shape='x')
         else:
-            viewer.draw_ws_point(c, color='g', shape='x')
+            viewer.draw_ws_point([c[1], c[0]], color='g', shape='x')
 
 
 def show_policy(pixel_map, predecessors, viewer):
@@ -91,7 +88,7 @@ def show_optimal_paths(optimal_paths, pixel_map, viewer):
 
 def show(costmap, workspace, show_result, starts=None, targets=None, paths=None,
          optimal_paths=None, weights=None, d=None, predecessors=None,
-         title=None, directory=None):
+         title=None, directory=None, centers=None):
     """ Show single map and optional optimal example trajectories,
         optimal trajectories, indication of weights, D or policy
     """
@@ -106,7 +103,7 @@ def show(costmap, workspace, show_result, starts=None, targets=None, paths=None,
         show_optimal_paths(optimal_paths, pixel_map, viewer)
 
     if weights is not None:
-        show_weights(viewer, weights, workspace)
+        show_weights(viewer, weights, centers)
 
     if d is not None:
         show_D(d, pixel_map, viewer)
@@ -127,7 +124,7 @@ def show(costmap, workspace, show_result, starts=None, targets=None, paths=None,
 
 def show_iteration(costmaps, original_costmaps, workspace, show_result,
                    weights=None, starts=None, targets=None, paths=None,
-                   optimal_paths=None, title=None, directory=None):
+                   centers=None, optimal_paths=None, title=None, directory=None):
     """ Show multiple maps and optional optimal example trajectories,
         optimal trajectories, indication of weights, D or policy
     """
@@ -151,7 +148,7 @@ def show_iteration(costmaps, original_costmaps, workspace, show_result,
             viewer.draw_ws_img(costmaps[i], interpolate="none")
 
             if weights is not None:
-                show_weights(viewer, weights[i], workspace)
+                show_weights(viewer, weights[i], centers)
 
             if paths is not None:
                 show_example_trajectories([paths[j]], pixel_map,
@@ -174,7 +171,7 @@ def show_iteration(costmaps, original_costmaps, workspace, show_result,
 
 
 def show_multiple(costmaps, original_costmaps, workspace, show_result,
-                  weights=None, starts=None,
+                  weights=None, centers=None, starts=None,
                   targets=None, paths=None, optimal_paths=None,
                   title=None, directory=None):
     """ Show multiple maps and optional optimal example trajectories,
@@ -200,7 +197,7 @@ def show_multiple(costmaps, original_costmaps, workspace, show_result,
             viewer._ax.set_title('Learned Costmap: \n {}.'.format(i + 1 - cols),
                                  size=32 / cols)
             if weights is not None:
-                show_weights(viewer, weights[i - cols], workspace)
+                show_weights(viewer, weights[i - cols], centers)
             if paths is not None:
                 show_example_trajectories(paths, pixel_map, starts, targets,
                                           viewer)
@@ -337,13 +334,13 @@ def animated_plot(maps, workspace, show_result, starts=None, targets=None,
     return ani
 
 
-def save_environment(filename, nb_points, nb_rbfs, sigma, nb_samples, w,
-                     costmap, starts, targets, paths):
+def save_environment(filename, nb_points, nb_rbfs, sigma, centers, nb_samples,
+                     w, costmap, starts, targets, paths):
     """ Save the environment with given demonstrations in a file"""
     file = home + '/../data/environment/' + filename + '.npz'
     np.savez(file, nb_points=nb_points, nb_rbfs=nb_rbfs, sigma=sigma,
-             nb_samples=nb_samples, w=w, costmap=costmap, starts=starts,
-             targets=targets, paths=paths)
+             centers=centers, nb_samples=nb_samples, w=w, costmap=costmap,
+             starts=starts, targets=targets, paths=paths)
     return file
 
 
@@ -356,7 +353,8 @@ def load_environment(filename):
     starts = file['starts']
     targets = file['targets']
     paths = file['paths']
-    return w, costmap, starts, targets, paths
+    centers = file['centers']
+    return w, costmap, starts, targets, paths, centers
 
 
 def load_environment_params(filename):

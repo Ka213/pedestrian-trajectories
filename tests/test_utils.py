@@ -16,8 +16,8 @@ def test_policy_iteration():
     workspace = Workspace()
     np.random.seed(1)
     # Create random costmap
-    w, original_costmap, starts, targets, paths = \
-        create_random_environment(nb_points, nb_rbfs, sigma, 0, workspace)
+    w, original_costmap, starts, targets, paths, centers = \
+        create_rand_env(nb_points, nb_rbfs, sigma, 0, workspace)
 
     P = get_transition_probabilities(original_costmap, nb_points)
     policy = policy_iteration(original_costmap, nb_points, discount, P)
@@ -64,10 +64,9 @@ def test_expected_edge_frequency():
     workspace = Workspace()
     np.random.seed(1)
     # Create random costmap
-    w, original_costmap, starts, targets, paths = \
-        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
-                                  workspace)
-    centers = workspace.box.meshgrid_points(nb_rbfs)
+    w, original_costmap, starts, targets, paths, centers = \
+        create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
+                        workspace)
     Phi = get_phi(nb_points, centers, sigma, workspace)
 
     P = get_transition_probabilities(original_costmap, nb_points)
@@ -94,10 +93,9 @@ def test_get_empirical_feature_count():
     workspace = Workspace()
     np.random.seed(1)
     # Create random costmap
-    w, original_costmap, starts, targets, paths = \
-        create_random_environment(nb_points, nb_rbfs, sigma, nb_samples,
-                                  workspace)
-    centers = workspace.box.meshgrid_points(nb_rbfs)
+    w, original_costmap, starts, targets, paths, centers = \
+        create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
+                        workspace)
     Phi = get_phi(nb_points, centers, sigma, workspace)
 
     f = get_empirical_feature_count(paths, Phi)
