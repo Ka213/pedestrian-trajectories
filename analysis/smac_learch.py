@@ -18,31 +18,44 @@ def learch(x):
     nb_points = 40
     nb_rbfs = 5
     sigma = 0.1
-    nb_samples = 100
+    nb_samples = 60
+    nb_env = 1
 
     workspace = Workspace()
 
-    w, original_costmap, starts, targets, paths, centers = \
-        create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
-                        workspace)
+    l = Learch2D(nb_points, nb_rbfs, sigma, workspace)
+    original_costmaps = []
+    original_starts = []
+    original_targets = []
+    original_paths = []
+    for i in range(nb_env):
+        # np.random.seed(i)
+        # Create random costmap
+        w, original_costmap, starts, targets, paths, centers = \
+            create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples,
+                                    workspace)
+        original_costmaps.append(original_costmap)
+        starts = starts[:nb_samples]
+        targets = targets[:nb_samples]
+        paths = paths[:nb_samples]
+        original_paths.append(paths)
+        original_starts.append(starts)
+        original_targets.append(targets)
+        # Learn costmap
+        l.add_environment(centers, paths, starts, targets)
 
-    # Learn costmap
-    l = Learch2D(nb_points, centers, sigma, paths, starts, targets, workspace)
-    # Set hyperparemeters
-    l._loss_scalar = x["loss scalar"]
-    l._loss_stddev = x["loss stddev"]
     l._learning_rate = x["learning rate"]
     l._stepsize_scalar = x["step size scalar"]
-    l._l2_regularizer = x["l2 regularizer"]
-    l._proximal_regularizer = x["proximal regularizer"]
-    l.exponentiated_gd = True
-    l.initialize_mydata()
+    for _, i in enumerate(l.instances):
+        i._loss_scalar = x["loss scalr"]
+        i._loss_stddev = x["loss stddev"]
+        i._l2_regularizer = x["l2 regularizer"]
+        i._proximal_regularizer = x["proximal regularizer"]
 
-    maps, optimal_paths, w = l.solve()
-    # Calculate Training loss
-    loss = get_learch_loss(original_costmap, optimal_paths[-1], paths,
-                           nb_samples, l._l2_regularizer,
-                           l._proximal_regularizer, w)
+    maps, optimal_paths, w_t, step = l.solve()
+
+    loss = - get_learch_loss(original_costmaps, optimal_paths, original_paths,
+                             nb_samples * nb_env)
     if loss < 0:
         loss = sys.maxsize
     return loss
@@ -53,15 +66,15 @@ logging.basicConfig(level=logging.INFO)  # logging.DEBUG for debug output
 # Build Configuration Space which defines all parameters and their ranges
 cs = ConfigurationSpace()
 loss_scalar = UniformIntegerHyperparameter("loss scalar", 0, 20,
-                                           default_value=14)
+                                           default_value=1)
 loss_stddev = UniformIntegerHyperparameter("loss stddev", 0, 20,
-                                           default_value=7)
+                                           default_value=10)
 learning_rate = UniformFloatHyperparameter("learning rate", 0.1, 2.0,
                                            default_value=1)
 step_size_scalar = UniformIntegerHyperparameter("step size scalar", 1, 20,
-                                                default_value=16)
+                                                default_value=1)
 l2_regularizer = UniformFloatHyperparameter("l2 regularizer", 0.001, 1,
-                                            default_value=1, log='True')
+                                            default_value=0.01, log='True')
 proximal_regularizer = UniformFloatHyperparameter("proximal regularizer", 0.001,
                                                   1, default_value=0.001,
                                                   log='True')
@@ -71,13 +84,13 @@ cs.add_hyperparameters([loss_scalar, loss_stddev, learning_rate,
 # Scenario object
 scenario = Scenario({"run_obj": "quality",  # we optimize quality
                      # (alternatively runtime)
-                     "runcount-limit": 2,
+                     "runcount-limit": 50,
                      "cs": cs,  # configuration space
                      "deterministic": "false",
                      "shared_model": True,
-                     "input_psmac_dirs": "smac-output-maxEnt",
-                     "cutoff_time": 1000,
-                     "wallclock_limit": 10000
+                     "input_psmac_dirs": "smac-output-learch",
+                     "cutoff_time": 9000,
+                     "wallclock_limit": 'inf'
                      })
 
 # Example call of the function
@@ -97,5 +110,3 @@ try:
 finally:
     incumbent = smac.solver.incumbent
 
-# inc_value = smac.get_tae_runner().run(incumbent, 1)[1]
-# print("Optimized Value: %.2f" % inc_value)

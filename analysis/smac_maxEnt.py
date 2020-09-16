@@ -18,29 +18,40 @@ def maxEnt(x):
     nb_points = 40
     nb_rbfs = 5
     sigma = 0.1
-    nb_samples = 100
+    nb_samples = 60
+    nb_env = 1
 
     workspace = Workspace()
+    m = MaxEnt(nb_points, nb_rbfs, sigma, workspace)
+    original_costmaps = []
+    original_starts = []
+    original_targets = []
+    original_paths = []
+    for i in range(nb_env):
+        # np.random.seed(i)
+        # Create random costmap
+        w, original_costmap, starts, targets, paths, centers = \
+            create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples,
+                                    workspace)
+        original_costmaps.append(original_costmap)
+        starts = starts[:nb_samples]
+        targets = targets[:nb_samples]
+        paths = paths[:nb_samples]
+        original_paths.append(paths)
+        original_starts.append(starts)
+        original_targets.append(targets)
+        # Learn costmap
+        m.add_environment(centers, paths, starts, targets)
 
-    w, original_costmap, starts, targets, paths, centers = \
-        create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
-                        workspace)
+    m._learning_rate = x["learning rate"]
+    m._stepsize_scalar = x["step size scalar"]
+    for _, i in enumerate(m.instances):
+        i._N = x["N"]
 
-    # Learn costmap
-    a = MaxEnt(nb_points, centers, sigma, paths, starts, targets, workspace)
-    # Set hyperparameters
-    a._N = x["N"]
-    a._learning_rate = x["learning rate"]
-    a._stepsize_scalar = x["step size scalar"]
+    maps, optimal_paths, w_t, step = m.solve()
 
-    learned_map, w_t = a.solve()
-    # Calculate Training loss
-    _, _, optimal_paths = plan_paths(nb_samples, learned_map[-1],
-                                     workspace, starts=starts,
-                                     targets=targets)
-    loss = get_maxEnt_loss(learned_map[-1], paths, nb_points, w_t[-1])
-    if loss < 0:
-        loss = sys.maxsize
+    loss = get_maxEnt_loss(maps, original_paths, nb_samples * nb_env)
+
     return loss
 
 
@@ -48,17 +59,17 @@ logging.basicConfig(level=logging.INFO)  # logging.DEBUG for debug output
 
 # Build Configuration Space which defines all parameters and their ranges
 cs = ConfigurationSpace()
-N = UniformIntegerHyperparameter("N", 20, 200, default_value=65)
+N = UniformIntegerHyperparameter("N", 50, 200, default_value=100)
 learning_rate = UniformFloatHyperparameter("learning rate", 0.1, 2.0,
-                                           default_value=0.7)
+                                           default_value=1)
 step_size_scalar = UniformIntegerHyperparameter("step size scalar", 1, 20,
-                                                default_value=20)
+                                                default_value=1)
 cs.add_hyperparameters([N, learning_rate, step_size_scalar])
 
 # Scenario object
 scenario = Scenario({"run_obj": "quality",  # we optimize quality
                      # (alternatively runtime)
-                     "runcount-limit": 5000,
+                     "runcount-limit": 10,
                      "cs": cs,  # configuration space
                      "deterministic": "false",
                      "shared_model": True,
@@ -84,5 +95,3 @@ try:
 finally:
     incumbent = smac.solver.incumbent
 
-# inc_value = smac.get_tae_runner().run(incumbent, 1)[1]
-# print("Optimized Value: %.2f" % inc_value)
