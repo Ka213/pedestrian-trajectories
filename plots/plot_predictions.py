@@ -13,7 +13,7 @@ nb_rbfs = 5
 sigma = 0.1
 nb_samples = 100
 nb_predictions = 5
-
+# TODO update to multiple environments
 workspace = Workspace()
 np.random.seed(1)
 filename = "environment3"

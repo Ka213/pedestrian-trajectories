@@ -9,7 +9,7 @@ filename = 'learch_100samples'
 
 workspace = Workspace()
 
-w, costmap, starts, targets, paths = load_environment("environment0")
+w, costmap, starts, targets, paths, centers = load_environment("environment0")
 maps, optimal_paths, _, starts, targets, paths = \
     get_results(home + '/../results/learning/' + filename + '.npz')
 
