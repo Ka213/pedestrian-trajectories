@@ -175,10 +175,10 @@ def hamming_loss_map(trajectory, nb_points):
         with 0 in all states of the given trajectory
         and 1 everywhere else
     """
-    occpancy_map = np.ones((nb_points, nb_points))
+    occpancy_map = np.zeros((nb_points, nb_points))
     x_1 = np.asarray(trajectory)[:, 0]
     x_2 = np.asarray(trajectory)[:, 1]
-    occpancy_map[x_1, x_2] = 0
+    occpancy_map[x_1, x_2] = 1
     return occpancy_map
 
 
@@ -187,25 +187,33 @@ def get_edt_loss(nb_points, learned_paths, demonstrations, nb_samples):
         between the demonstrations and learned paths
     """
     loss = 0
-    for op, d in zip(learned_paths, demonstrations):
-        loss += get_edt(op, d, nb_points) / len(d)
+    for learned_path, demonstration in zip(learned_paths, demonstrations):
+        for op, d in zip(learned_path, demonstration):
+            loss += get_edt(op, d, nb_points) / len(op)
     loss = loss / nb_samples
     return loss
 
 
-def get_overall_loss(nb_points, learned_map, original_costmap):
+def get_overall_loss(learned_maps, original_costmaps):
     """ Return the difference between the costsmaps """
-    loss = np.sum(np.abs(learned_map - original_costmap)) / (nb_points ** 2)
-    return loss
+    loss = 0
+    for map, costmap in zip(learned_maps, original_costmaps):
+        map = map / np.sum(map)
+        costmap = costmap / np.sum(costmap)
+        loss += np.sum(np.abs(map - costmap))
+    return loss / len(learned_maps)
 
 
-def get_nll(learned_paths, demonstrations, nb_points):
+def get_nll(learned_paths, demonstrations, nb_points, nb_samples):
     """ Return the negative log likelihood
         of the learned paths and the predictions
     """
     loss = 0
-    for l, d in zip(learned_paths, demonstrations):
-        pred = hamming_loss_map(l, nb_points)
-        truth = hamming_loss_map(d, nb_points)
-        loss += log_loss(truth, pred)
-    return loss / len(learned_paths)
+    for learned_path, demonstration in zip(learned_paths, demonstrations):
+        for l, d in zip(learned_path, demonstration):
+            pred = hamming_loss_map(l, nb_points).astype(int) \
+                .reshape(nb_points ** 2)
+            truth = hamming_loss_map(d, nb_points).astype(int) \
+                .reshape(nb_points ** 2)
+            loss += log_loss(truth, pred)
+    return loss / nb_samples
