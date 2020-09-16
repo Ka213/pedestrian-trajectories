@@ -371,11 +371,31 @@ def load_environment_params(filename):
 def save_learch_params(directory, l):
     """ Save the hyperparametes of a LEARCH instance in a file """
     file = directory + '.npz'
-    np.savez(file, loss_scalar=l._loss_scalar, loss_stddev=l._loss_stddev,
-             learning_rate=l._learning_rate, stepsize_scalar=l._stepsize_scalar,
-             l2_regularizer=l._l2_regularizer, proximal_regularizer=
-             l._proximal_regularizer, exponentiatd_gd=l.exponentiated_gd)
+
+    np.savez(file, learning_rate=l._learning_rate,
+             stepsize_scalar=l._stepsize_scalar,
+             loss_scalar=l.instances[0]._loss_scalar,
+             loss_stddev=l.instances[0]._loss_stddev,
+             l2_regularizer=l.instances[0]._l2_regularizer,
+             proximal_regularizer=l.instances[0]._proximal_regularizer,
+             convergence=l.convergence)
     return file
+
+
+def get_learch_params(directory):
+    """ Set the hyperparameters of a LEARCH instance according to the values
+        saved in the given file
+    """
+    file = np.load(directory)
+    loss_scalar = file['loss_scalar']
+    loss_stddev = file['loss_stddev']
+    learing_rate = file['learning_rate']
+    stepsize_scalar = file['stepsize_scalar']
+    l2_regularizer = file['l2_regularizer']
+    proximal_regularizer = file['proximal_regularizer']
+    convergence = file['convergence']
+    return learing_rate, stepsize_scalar, loss_scalar, loss_stddev, \
+           l2_regularizer, proximal_regularizer, convergence
 
 
 def set_learch_params(directory, l):
@@ -383,13 +403,14 @@ def set_learch_params(directory, l):
         saved in the given file
     """
     file = np.load(directory)
-    l._loss_scalar = file['loss_scalar']
-    l._loss_stddev = file['loss_stddev']
     l._learing_rate = file['learning_rate']
     l._stepsize_scalar = file['stepsize_scalar']
-    l._l2_regularizer = file['l2_regularizer']
-    l._proximal_regularizer = file['proximal_regularizer']
-    l.exponentiated_gd = file['exponentiated_gd']
+    l.convergence = file['convergence']
+    for _, i in enumerate(l.instances):
+        i._loss_scalar = file['loss_scalar']
+        i._loss_stddev = file['loss_stddev']
+        i._l2_regularizer = file['l2_regularizer']
+        i._proximal_regularizer = file['proximal_regularizer']
     return l
 
 
@@ -397,7 +418,7 @@ def save_maxEnt_params(directory, m):
     """ Save the hyperparametes of a maxEnt instance in a file """
     file = directory + '.npz'
     np.savez(file, learning_rate=m._learning_rate, stepsize_scalar=
-    m._stepsize_scalar, N=m._N)
+    m._stepsize_scalar, N=m.instances[0]._N, convergence=m.convergence)
     return file
 
 
@@ -408,7 +429,9 @@ def set_maxEnt_params(directory, m):
     file = np.load(directory)
     m._learning_rate = file['learning_rate']
     m._stepsize_scalar = file['stepsize_scalar']
-    m._N = file['N']
+    m.convergence = file['convergence']
+    for _, i in enumerate(m.instances):
+        i._N = file['N']
     return m
 
 
