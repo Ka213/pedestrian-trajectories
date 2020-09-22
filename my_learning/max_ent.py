@@ -28,15 +28,14 @@ class MaxEnt():
         M = self.MaxEnt_instance(phi, paths, starts, targets, self.workspace)
         self.instances.append(M)
 
-    def n_steps(self, n):
+    def n_steps(self, n, begin=0):
         """ Do n steps of the maxEnt algorithm over multiple environments """
-        step = 0
+        step = begin
         for i in range(n):
             print("step :", step)
             g = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
-                i.w = self.w
-                i.costmap = np.tensordot(self.w, i.phi, axes=1)
+                i.update(self.w)
                 gradient = i.get_gradient()
                 g += gradient
             self.w = self.w + get_stepsize(step, self._learning_rate,
@@ -49,27 +48,23 @@ class MaxEnt():
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(self.w, i.phi, axes=1)
-            costmaps.append(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
-                                     self.workspace, starts=i.sample_starts,
-                                     targets=i.sample_targets)
-            optimal_paths.append(paths)
+            i.update(self.w)
+            costmaps.append(i.costmap)
+            optimal_paths.append(i.optimal_paths[-1])
         return costmaps, optimal_paths, self.w, step
 
-    def solve(self):
+    def solve(self, begin=0):
         """ Compute the maxEnt over multiple environments
             until the weights converge
         """
-        step = 0
+        step = begin
         w_old = copy.deepcopy(self.w)
         e = 10
         while e > self.convergence:
             print("step :", step)
             g = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
-                i.w = self.w
-                i.costmap = np.tensordot(self.w, i.phi, axes=1)
+                i.update(self.w)
                 gradient = i.get_gradient()
                 g += gradient
             self.w = self.w + get_stepsize(step, self._learning_rate,
@@ -85,12 +80,9 @@ class MaxEnt():
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(self.w, i.phi, axes=1)
-            costmaps.append(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
-                                     self.workspace, starts=i.sample_starts,
-                                     targets=i.sample_targets)
-            optimal_paths.append(paths)
+            i.update(self.w)
+            costmaps.append(i.costmap)
+            optimal_paths.append(i.optimal_paths[-1])
         return costmaps, optimal_paths, self.w, step
 
     class MaxEnt_instance():
@@ -111,6 +103,20 @@ class MaxEnt():
             self.costmap = np.tensordot(self.w, self.phi, axes=1)
             self.transition_probability = \
                 get_transition_probabilities(self.costmap, phi.shape[1])
+
+            self.learned_maps = []
+            self.optimal_paths = []
+
+        def update(self, w):
+            """ Update the weights and the costmap """
+            self.w = w
+            map = np.tensordot(self.w, self.phi, axes=1)
+            self.costmap = map
+            self.learned_maps.append(map)
+            _, _, op = plan_paths(len(self.sample_trajectories), self.costmap,
+                                  self.workspace, self.sample_starts,
+                                  self.sample_targets)
+            self.optimal_paths.append(op)
 
         def get_gradient(self):
             """ Compute the gradient of the maximum entropy objective """

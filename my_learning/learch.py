@@ -16,11 +16,11 @@ class Learch2D():
         self.nb_rbfs = nb_rbfs
         # Parameters to compute the step size
         self._learning_rate = 1
-        self._stepsize_scalar = 1
+        self._stepsize_scalar = 10
 
         self.convergence = 0.1
 
-        self.w = np.ones(nb_rbfs ** 2)
+        self.w = np.exp(np.ones(nb_rbfs ** 2))
         self.instances = []
 
     def add_environment(self, centers, paths, starts, targets):
@@ -39,42 +39,41 @@ class Learch2D():
             l_proximal = l._proximal_regularizer
         return l2, l_proximal
 
-    def n_step(self, n):
+    def n_steps(self, n, begin=0):
         """ Do n steps of the LEARCH algorithm over multiple environments """
-        step = 0
+        step = begin
         for i in range(n):
             print("step :", step)
             w_t = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
-                i.w = self.w
-                i.costmap = np.tensordot(np.exp(self.w), i.phi, axes=1)
+                i.update(self.w)
                 w = i.one_step(step)
                 w_t += w
-            self.w = np.exp(self.w + get_stepsize(step, self._learning_rate,
+            self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) *
-                            (w_t / len(self.instances)))
-            # print("w ", self.w , self.w.sum())
-            print("step size: ", get_stepsize(step, self._learning_rate,
-                                              self._stepsize_scalar))
-            self.w = np.log(self.w)
+                                     (w_t / len(self.instances)))
+            print("step size: ", np.exp(get_stepsize(step, self._learning_rate,
+                                                     self._stepsize_scalar)))
             step += 1
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(self.w, i.phi, axes=1)
+            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
             costmaps.append(costmap)
+            i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)
             _, _, paths = plan_paths(len(i.sample_trajectories), map,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
-        return costmaps, optimal_paths, np.exp(self.w), step
+            i.optimal_paths.append(paths)
+        return costmaps, optimal_paths, self.w, step
 
-    def solve(self):
+    def solve(self, begin=0):
         """ Compute the LEARCH over multiple environments
             until the weights converge
         """
-        step = 0
+        step = begin
         w_old = copy.deepcopy(self.w)
         e = 10
         # Iterate until convergence
@@ -82,18 +81,16 @@ class Learch2D():
             print("step :", step)
             w_t = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
-                i.w = self.w
-                i.costmap = np.tensordot(np.exp(self.w), i.phi, axes=1)
+                i.update(self.w)
                 w = i.one_step(step)
                 w_t += w
             # Gradient descent rule of the LEARCH algorithm
-            self.w = np.exp(self.w + get_stepsize(step, self._learning_rate,
+            self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) *
-                            (w_t / len(self.instances)))
-            print("step size: ", get_stepsize(step, self._learning_rate,
-                                              self._stepsize_scalar))
-            self.w = np.log(self.w)
-            e = np.amax(self.w - w_old).sum()
+                                     (w_t / len(self.instances)))
+            print("step size: ", np.exp(get_stepsize(step, self._learning_rate,
+                                                     self._stepsize_scalar)))
+            e = np.amax(np.abs(self.w - w_old))
             print("convergence: ", e)
             w_old = copy.deepcopy(self.w)
             step += 1
@@ -102,14 +99,16 @@ class Learch2D():
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(self.w, i.phi, axes=1)
+            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
             costmaps.append(costmap)
+            i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)
             _, _, paths = plan_paths(len(i.sample_trajectories), map,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
-        return costmaps, optimal_paths, np.exp(self.w), step
+            i.optimal_paths.append(paths)
+        return costmaps, optimal_paths, self.w, step
 
     class Learch_instance(Learch):
         """ Implements the LEARCH algorithm for one environment """
@@ -122,8 +121,8 @@ class Learch2D():
             self._loss_scalar = 1
             self._loss_stddev = 10
             # Regularization parameters for the linear regression
-            self._l2_regularizer = 0.01  # 1e-6
-            self._proximal_regularizer = 0  # 1e-6
+            self._l2_regularizer = 0.1
+            self._proximal_regularizer = 0
 
             # Examples
             self.sample_trajectories = paths
@@ -131,9 +130,13 @@ class Learch2D():
             self.sample_targets = targets
 
             self.phi = phi
-            self.w = np.log(np.ones(phi.shape[0]))
+            self.w = np.exp(np.ones(phi.shape[0]))
             self.costmap = np.tensordot(self.w, self.phi, axes=1)
             self.loss_map = np.zeros((len(paths), phi.shape[1], phi.shape[2]))
+
+            self.learned_maps = []
+            self.optimal_paths = []
+            self.weights = []
 
             self.create_loss_maps()
 
@@ -142,6 +145,20 @@ class Learch2D():
             for i, t in enumerate(self.sample_trajectories):
                 self.loss_map[i] = scaled_hamming_loss_map(
                     t, self.phi.shape[1], self._loss_scalar, self._loss_stddev)
+
+        def update(self, w):
+            """ Update the weights and the costmap """
+            self.w = w
+            map = np.tensordot(self.w, self.phi, axes=1)
+            self.costmap = map
+            map = np.tensordot(np.log(self.w), self.phi, axes=1)
+            self.learned_maps.append(map)
+
+            map = map - np.amin(map)
+            _, _, paths = plan_paths(len(self.sample_trajectories), map,
+                                     self.workspace, starts=self.sample_starts,
+                                     targets=self.sample_targets)
+            self.optimal_paths.append(paths)
 
         def planning(self):
             """ Compute the optimal path for each start and
@@ -178,7 +195,7 @@ class Learch2D():
                 D = np.hstack((D, d))
             return D, optimal_paths
 
-        def supervised_learning(self, t, D):
+        def supervised_learning(self, D):
             """ Train a regressor on D
                 compute the hypothesis of the new weights with linear regression
             """
@@ -187,9 +204,10 @@ class Learch2D():
             x2 = D[:][1].astype(int)
             Phi = self.phi[:, x1, x2].T
 
-            w_new = linear_regression(Phi, C, np.exp(self.w),
+            w_new = linear_regression(Phi, C, self.w,
                                       self._l2_regularizer,
                                       self._proximal_regularizer)
+            self.weights.append(w_new)
             return w_new
 
         def get_subgadient(self, optimal_paths):
@@ -209,7 +227,7 @@ class Learch2D():
         def one_step(self, t):
             """ Compute one step of the LEARCH algorithm """
             d, optimal_paths = self.planning()
-            w_new = self.supervised_learning(t, d)
+            w_new = self.supervised_learning(d)
             return w_new
 
 
