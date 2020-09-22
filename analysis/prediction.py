@@ -34,8 +34,8 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
         # file.write("training environment: " + "environment" + str(k) + '\n')
         w, original_costmap, s, t, p, centers = \
             load_environment("environment_sample_centers" + str(k))
-        nb_points, nb_rbfs, sigma, _ = load_environment_params("environment"
-                                                               + str(k))
+        nb_points, nb_rbfs, sigma, _ = \
+            load_environment_params("environment_sample_centers" + str(k))
         original_costmaps.append(original_costmap)
         starts = s[:i]
         targets = t[:i]
@@ -54,19 +54,14 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
     nb_steps = step_count
 
     # Calculate training loss
-    if learning == 'learch':
-        training_loss_r = get_learch_loss(original_costmaps, optimal_paths, original_paths,
-                                          i * nb_env, l2, l_proximal, w_t)
-        training_loss = get_learch_loss(original_costmaps, optimal_paths, original_paths,
-                                        i * nb_env)
-    elif learning == 'maxEnt':
-        training_loss_r = get_maxEnt_loss(learned_maps, original_paths, i * nb_env, w_t)
-        training_loss = get_maxEnt_loss(learned_maps, original_paths, i * nb_env)
+    training_loss_l = get_learch_loss(original_costmaps, optimal_paths,
+                                      original_paths, i)
+    training_loss_m = get_maxEnt_loss(learned_maps, original_paths, i)
 
     training_edt = get_edt_loss(nb_points, optimal_paths, original_paths,
-                                i * nb_env)
-    error_cost = get_overall_loss(learned_maps, original_costmaps)
-    training_nll = get_nll(optimal_paths, original_paths, nb_points, i * nb_env)
+                                i)
+    training_costs = get_overall_loss(learned_maps, original_costmaps)
+    training_nll = get_nll(optimal_paths, original_paths, nb_points, i)
 
     # Predict paths
     prediction_time_0 = time.time()
@@ -95,40 +90,33 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
     prediction_time = time.time() - prediction_time_0
 
     # Calculate test loss
-    if learning == 'learch':
-        test_loss_r = get_learch_loss(p_original_maps, predictions, p_paths,
-                                      nb_predictions * nb_env, l2, l_proximal, w_t)
-        test_loss = get_learch_loss(p_original_maps, predictions, p_paths,
-                                    nb_predictions * nb_env)
-    elif learning == 'maxEnt':
-        test_loss_r = get_maxEnt_loss(p_learned_maps, p_paths,
-                                      nb_predictions * nb_env, w_t)
-        test_loss = get_maxEnt_loss(p_learned_maps, p_paths,
-                                    nb_predictions * nb_env)
-    test_nll = get_nll(predictions, p_paths, nb_points, nb_predictions * nb_env)
+    test_loss_l = get_learch_loss(p_original_maps, predictions, p_paths,
+                                  nb_predictions)
+    test_loss_m = get_maxEnt_loss(p_learned_maps, p_paths, nb_predictions)
+    test_nll = get_nll(predictions, p_paths, nb_points, nb_predictions)
     test_edt = get_edt_loss(nb_points, predictions, p_paths,
-                            nb_predictions * nb_env)
+                            nb_predictions)
+    test_costs = get_overall_loss(p_learned_maps, p_original_maps)
 
     if learning == "learch":
         save_learch_params(directory + "/params", l)
     elif learning == "maxEnt":
         save_maxEnt_params(directory + "/params", l)
 
-    return learning_time, nb_steps, training_loss, training_edt, error_cost, \
-           prediction_time, test_loss, test_nll, test_edt, training_nll, \
-           training_loss_r, test_loss_r
+    return learning_time, prediction_time, nb_steps, training_loss_l, \
+           training_loss_m, training_edt, training_costs, training_nll, \
+           test_loss_l, test_loss_m, test_nll, test_edt, test_costs
 
 
 if __name__ == "__main__":
     show_result = 'SAVE'
     # set the learning method to evaluate
     # choose between learch and maxEnt
-
+    learning = 'learch'
     nb_samples_l = 5
     nb_samples_u = 5
     step = 1
     nb_environments = 1
-    learning = 'learch'
     nb_predictions = 100
     range_test_env = np.arange(1)
     foldername = '{}_{}env_{}-{}samples_{}predictions'.format(learning,
@@ -150,45 +138,56 @@ if __name__ == "__main__":
     y = [(learning, nb_predictions, nb_environments, range_test_env,
           workspace, i) for i in x]
     result = pool.starmap(parallel_task, y)
-    learning_time = np.asarray(result)[:, 0]
-    nb_steps = np.asarray(result)[:, 1]
-    training_loss = np.asarray(result)[:, 2]
-    training_edt = np.asarray(result)[:, 3]
-    error_cost = np.asarray(result)[:, 4]
-    prediction_time = np.asarray(result)[:, 5]
-    test_loss = np.asarray(result)[:, 6]
-    test_nll = np.asarray(result)[:, 7]
-    test_edt = np.asarray(result)[:, 8]
-    training_nll = np.asarray(result)[:, 9]
-    training_loss_r = np.asarray(result)[:, 10]
-    test_loss_r = np.asarray(result)[:, 11]
+    learning_time = loss = np.vstack(np.asarray(result)[:, 0])
+    prediction_time = np.vstack(np.asarray(result)[:, 1])
+    nb_steps = np.vstack(np.asarray(result)[:, 2])
+    training_loss_l = np.vstack(np.asarray(result)[:, 3])
+    training_loss_m = np.vstack(np.asarray(result)[:, 4])
+    training_edt = np.vstack(np.asarray(result)[:, 5])
+    training_costs = np.vstack(np.asarray(result)[:, 6])
+    training_nll = np.vstack(np.asarray(result)[:, 7])
+    test_loss_l = np.vstack(np.asarray(result)[:, 8])
+    test_loss_m = np.vstack(np.asarray(result)[:, 9])
+    test_nll = np.vstack(np.asarray(result)[:, 10])
+    test_edt = np.vstack(np.asarray(result)[:, 11])
+    test_costs = np.vstack(np.asarray(result)[:, 12])
 
     pool.close()
 
     results = directory + '/results.npz'
-    np.savez(results, x=x, test_nll=test_nll, training_nll=training_nll,
-             test_loss=test_loss, training_loss=training_loss,
-             test_edt=test_edt, training_edt=training_edt, costs=error_cost,
-             nb_steps=nb_steps, learning_time=learning_time,
-             prediction_time=prediction_time, training_loss_r=training_loss_r,
-             test_loss_r=test_loss_r)
+    np.savez(results, x=x, learning_time=learning_time, prediction_time=
+    prediction_time, nb_steps=nb_steps, training_loss_l=training_loss_l,
+             training_loss_m=training_loss_m, training_edt=training_edt,
+             training_costs=training_costs, training_nll=training_nll,
+             test_loss_l=test_loss_l, test_loss_m=test_loss_m, test_nll=
+             test_nll, test_edt=test_edt, test_costs=test_costs)
 
     # Plot results
-    plot_avg_over_runs(x, 1, directory + "/test_nll.png", loss=test_nll)
-    plot_avg_over_runs(x, 1, directory + "/training_nll.png", loss=training_nll)
-    plot_avg_over_runs(x, 1, directory + "/test_loss.png", loss=test_loss)
-    plot_avg_over_runs(x, 1, directory + "/test_loss_r.png", loss=test_loss_r)
-    plot_avg_over_runs(x, 1, directory + "/training_loss.png",
-                       loss=training_loss)
-    plot_avg_over_runs(x, 1, directory + "/training_loss_r.png",
-                       loss=training_loss_r)
-    plot_avg_over_runs(x, 1, directory + "/training_edt.png", loss=training_edt)
-    plot_avg_over_runs(x, 1, directory + "/test_edt.png", loss=test_edt)
-    plot_avg_over_runs(x, 1, directory + "/costs.png", loss=error_cost)
-    plot_avg_over_runs(x, 1, directory + "/nb_steps.png", nb_steps=nb_steps)
-    plot_avg_over_runs(x, 1, directory + "/learning_time.png",
+    plot_avg_over_runs(x, nb_environments, directory + "/training_loss_l.png",
+                       loss=training_loss_l)
+    plot_avg_over_runs(x, nb_environments, directory + "/training_loss_m.png",
+                       loss=training_loss_m)
+    plot_avg_over_runs(x, nb_environments, directory + "/training_edt.png",
+                       loss=training_edt)
+    plot_avg_over_runs(x, nb_environments, directory + "/training_costs.png",
+                       loss=training_costs)
+    plot_avg_over_runs(x, nb_environments, directory + "/training_nll.png",
+                       loss=training_nll)
+    plot_avg_over_runs(x, nb_environments, directory + "/test_loss_l.png",
+                       loss=test_loss_l)
+    plot_avg_over_runs(x, nb_environments, directory + "/test_loss_m.png",
+                       loss=test_loss_m)
+    plot_avg_over_runs(x, nb_environments, directory + "/test_nll.png",
+                       loss=test_nll)
+    plot_avg_over_runs(x, nb_environments, directory + "/test_edt.png",
+                       loss=test_edt)
+    plot_avg_over_runs(x, nb_environments, directory + "/test_costs.png",
+                       loss=test_costs)
+    plot_avg_over_runs(x, nb_environments, directory + "/nb_steps.png",
+                       nb_steps=nb_steps)
+    plot_avg_over_runs(x, nb_environments, directory + "/learning_time.png",
                        time=learning_time)
-    plot_avg_over_runs(x, 1, directory + "/prediction_time.png",
+    plot_avg_over_runs(x, nb_environments, directory + "/prediction_time.png",
                        prediction_time=prediction_time)
 
     file.write("duration: {}".format(time.time() - t_0) + 'sec \n')
