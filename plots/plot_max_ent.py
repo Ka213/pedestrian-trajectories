@@ -33,14 +33,22 @@ for i in range(nb_env):
     # Learn costmap
     m.add_environment(centers, paths, starts, targets)
 maps, optimal_paths, w_t, step = m.solve()
+for j, i in enumerate(m.instances):
+    for k in range(int(nb_samples / 5)):
+        show_iteration(i.learned_maps, [original_costmaps[j]], workspace,
+                       show_result, starts=original_starts[j][k * 5:(k + 1) * 5],
+                       targets=original_targets[j][k * 5:(k + 1) * 5],
+                       paths=original_paths[j][k * 5:(k + 1) * 5],
+                       optimal_paths=np.asarray(i.optimal_paths)[:,
+                                     k * 5:(k + 1) * 5])
 
 loss = get_maxEnt_loss(maps, original_paths, nb_samples * nb_env)
-print("loss: ", loss)
+print("loss: ", np.average(loss))
 training_edt = get_edt_loss(nb_points, optimal_paths, original_paths,
                             nb_samples * nb_env)
-print("edt loss: ", training_edt)
+print("edt loss: ", np.average(training_edt))
 error_cost = get_overall_loss(maps, original_costmaps)
-print("costs: ", error_cost)
+print("costs: ", np.average(error_cost))
 
 # Output learned costmaps
 show_multiple(maps, original_costmaps, workspace, show_result)

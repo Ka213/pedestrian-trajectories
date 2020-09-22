@@ -50,7 +50,7 @@ def maxEnt(x):
 
     maps, optimal_paths, w_t, step = m.solve()
 
-    loss = get_maxEnt_loss(maps, original_paths, nb_samples * nb_env)
+    loss = np.average(get_maxEnt_loss(maps, original_paths, nb_samples * nb_env))
 
     return loss
 

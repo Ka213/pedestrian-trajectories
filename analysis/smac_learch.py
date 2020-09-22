@@ -54,8 +54,8 @@ def learch(x):
 
     maps, optimal_paths, w_t, step = l.solve()
 
-    loss = - get_learch_loss(original_costmaps, optimal_paths, original_paths,
-                             nb_samples * nb_env)
+    loss = - np.average(get_learch_loss(original_costmaps, optimal_paths,
+                                        original_paths, nb_samples * nb_env))
     if loss < 0:
         loss = sys.maxsize
     return loss
