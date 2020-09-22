@@ -186,34 +186,36 @@ def get_edt_loss(nb_points, learned_paths, demonstrations, nb_samples):
     """ Return the loss of the euclidean distance transform
         between the demonstrations and learned paths
     """
-    loss = 0
-    for learned_path, demonstration in zip(learned_paths, demonstrations):
+    loss = np.zeros(len(learned_paths))
+    for i, (learned_path, demonstration) in enumerate(zip(learned_paths,
+                                                          demonstrations)):
         for op, d in zip(learned_path, demonstration):
-            loss += get_edt(op, d, nb_points) / len(op)
+            loss[i] += get_edt(op, d, nb_points) / len(op)
     loss = loss / nb_samples
     return loss
 
 
 def get_overall_loss(learned_maps, original_costmaps):
     """ Return the difference between the costsmaps """
-    loss = 0
-    for map, costmap in zip(learned_maps, original_costmaps):
+    loss = np.zeros(len(learned_maps))
+    for i, (map, costmap) in enumerate(zip(learned_maps, original_costmaps)):
         map = map / np.sum(map)
         costmap = costmap / np.sum(costmap)
-        loss += np.sum(np.abs(map - costmap))
-    return loss / len(learned_maps)
+        loss[i] = np.sum(np.abs(map - costmap))
+    return loss
 
 
 def get_nll(learned_paths, demonstrations, nb_points, nb_samples):
     """ Return the negative log likelihood
         of the learned paths and the predictions
     """
-    loss = 0
-    for learned_path, demonstration in zip(learned_paths, demonstrations):
+    loss = np.zeros(len(learned_paths))
+    for i, (learned_path, demonstration) in enumerate(zip(learned_paths,
+                                                          demonstrations)):
         for l, d in zip(learned_path, demonstration):
             pred = hamming_loss_map(l, nb_points).astype(int) \
                 .reshape(nb_points ** 2)
             truth = hamming_loss_map(d, nb_points).astype(int) \
                 .reshape(nb_points ** 2)
-            loss += log_loss(truth, pred)
+            loss[i] += log_loss(truth, pred)
     return loss / nb_samples

@@ -20,8 +20,9 @@ def plot_avg_over_runs(x, nb_runs, directory, loss=None, time=None,
 
     if loss is not None:
         if nb_runs > 1:
-            y_stddev = np.std(loss, axis=0)
-            ax.errorbar(x, np.average(loss, axis=0), yerr=y_stddev, capsize=2, label='loss')
+            y_stddev = np.std(loss, axis=1)
+            y = np.average(loss, axis=1)
+            ax.errorbar(x, y, yerr=y_stddev, capsize=2, label='loss')
         else:
             ax.plot(x, loss, label='loss')
         plt.xlabel('loss')
@@ -116,110 +117,163 @@ def plot_data(show_image, directory, directoryToSave=None):
 
 
 def add_subplot_plot(ax, x, y, name):
+    # ax.rc('axes', prop_cycle=(cycler('color', ['r', 'g', 'b', 'y'])))
     for y_i, name_i in zip(y, name):
+        y_i = np.vstack(y_i)
+        y_stddev = np.std(y_i, axis=1)
+        y_i = np.average(y_i, axis=1)
+        ax.fill_between(x, y_i + y_stddev, y_i - y_stddev, alpha=0.5)
         ax.plot(x, y_i, label=name_i)
 
 
-def compare_learning(directories, directory):
+def compare_learning(directories, directory, names=None, title=None):
     """ plot results different predictions into the same graph """
     l_x = []
-    l_nll = []
-    l_test_loss = []
-    l_training_loss = []
+    l_test_nll = []
+    l_training_nll = []
+    l_test_loss_l = []
+    l_training_loss_l = []
+    l_test_loss_m = []
+    l_training_loss_m = []
     l_test_edt = []
     l_training_edt = []
-    l_costs = []
+    l_training_costs = []
+    l_test_costs = []
     l_nb_steps = []
     l_learning_time = []
     l_prediction_time = []
-    l_name = ['1 environment', '5 environments', '10 environments']
+    l_name = names
     # Get each result
     for i, d in enumerate(directories):
-        l = np.load(d)
+        l = np.load(d, allow_pickle=True)
         l_x.append(l['x'])
-        l_nll.append(l['nll'])
-        l_test_loss.append(l['test_loss'])
-        l_training_loss.append(l['training_loss'])
-        l_test_edt.append(l['test_edt'])
-        l_training_edt.append(l['training_edt'])
-        l_costs.append(l['costs'])
         l_nb_steps.append(l['nb_steps'])
         l_learning_time.append(l['learning_time'])
         l_prediction_time.append(l['prediction_time'])
-        # l_name.append(d.split('/')[-2])
+        l_test_loss_l.append(l['test_loss_l'])
+        l_training_loss_l.append(l['training_loss_l'])
+        l_test_loss_m.append(l['test_loss_m'])
+        l_training_loss_m.append(l['training_loss_m'])
+        l_test_nll.append(l['test_nll'])
+        l_training_nll.append(l['training_nll'])
+        l_test_edt.append(l['test_edt'])
+        l_training_edt.append(l['training_edt'])
+        l_training_costs.append(l['training_costs'])
+        l_test_costs.append(l['test_costs'])
+
+        if names is None:
+            l_name.append(d.split('/')[-2])
     # Plot each measurement in one graph
-    rows = 3
-    cols = 3
+    rows = 7
+    cols = 2
     fig = plt.figure(figsize=(cols * 7, rows * 7))
-    # plt.suptitle('LEARCH', fontsize=20, y=1)
+    if title is not None:
+        plt.suptitle(title, fontsize=20, y=1)
     spec2 = gridspec.GridSpec(ncols=cols, nrows=rows, figure=fig)
-    # for i in range(len(directories)):
-    #     ax = fig.add_subplot(spec2[math.floor(i / 2), i % 2])
-    #     y = [l_test_loss[i], l_training_loss[i]]
-    #     legend = ["test loss", "training loss"]
-    #     add_subplot_plot(ax, l_x[0], y, legend)
-    #     ax.set_xlabel('# of demonstrations used')
-    #     ax.set_ylabel('loss')
-    #     #if i == 0:
-    #     #    ax.set_yscale('log')
-    #     ax.legend(loc="upper right")
-    #     ax.set_title("loss " + l_name[i])
+
     ax = fig.add_subplot(spec2[0, 0])
-    add_subplot_plot(ax, l_x[0], l_training_loss, l_name)
-    ax.set_xlabel('# of demonstrations used')
-    ax.set_ylabel('training loss')
-    # ax.set_yscale('log')
+    add_subplot_plot(ax, l_x[0], l_training_loss_l, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('LEARCH training loss')
     ax.legend(loc="upper right")
-    ax.set_title("training loss")
+    ax.set_title("LEARCH training loss")
+    ax.set_ylim([-0.9, 0.1])
+
     ax = fig.add_subplot(spec2[0, 1])
-    add_subplot_plot(ax, l_x[0], l_test_loss, l_name)
-    ax.set_xlabel('# of demonstrations used')
-    ax.set_ylabel('test loss')
+    add_subplot_plot(ax, l_x[0], l_test_loss_l, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('LEARCH test loss')
     ax.legend(loc="upper right")
-    ax.set_title("test loss")
-    ax = fig.add_subplot(spec2[0, 2])
-    add_subplot_plot(ax, l_x[0], l_test_edt, l_name)
-    ax.set_xlabel('# of demonstrations used')
-    ax.set_ylabel('test euclidean distance transform')
-    ax.legend(loc="upper right")
-    ax.set_title("test euclidean distance transform")
+    ax.set_title("LEARCH test loss")
+    ax.set_ylim([-0.9, 0.1])
+
     ax = fig.add_subplot(spec2[1, 0])
+    add_subplot_plot(ax, l_x[0], l_training_loss_m, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('maximum Entropy training loss')
+    ax.legend(loc="upper right")
+    ax.set_title("maximum Entropy training loss")
+    ax.set_ylim([0, 0.2])
+
+    ax = fig.add_subplot(spec2[1, 1])
+    add_subplot_plot(ax, l_x[0], l_test_loss_m, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('maximum Entropy test loss')
+    ax.legend(loc="upper right")
+    ax.set_title("maximum Entropy test loss")
+    ax.set_ylim([0, 0.2])
+
+    ax = fig.add_subplot(spec2[2, 0])
     add_subplot_plot(ax, l_x[0], l_training_edt, l_name)
-    ax.set_xlabel('# of demonstrations used')
+    ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('training euclidean distance transform')
     ax.legend(loc="upper right")
     ax.set_title("training euclidean distance transform")
-    ax = fig.add_subplot(spec2[1, 1])
-    add_subplot_plot(ax, l_x[0], l_nll, l_name)
-    ax.set_xlabel('# of demonstrations used')
-    ax.set_ylabel('negative log likelihood')
+    ax.set_ylim([0, 3.5])
+
+    ax = fig.add_subplot(spec2[2, 1])
+    add_subplot_plot(ax, l_x[0], l_test_edt, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('test euclidean distance transform')
     ax.legend(loc="upper right")
-    ax.set_title("NLL")
-    ax = fig.add_subplot(spec2[1, 2])
-    add_subplot_plot(ax, l_x[0], l_costs, l_name)
-    ax.set_xlabel('# of demonstrations used')
+    ax.set_title("test euclidean distance transform")
+    ax.set_ylim([0, 3.5])
+
+    ax = fig.add_subplot(spec2[3, 0])
+    add_subplot_plot(ax, l_x[0], l_training_nll, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('training negative log likelihood')
+    ax.legend(loc="upper right")
+    ax.set_title("training NLL")
+    ax.set_ylim([0, 1.2])
+
+    ax = fig.add_subplot(spec2[3, 1])
+    add_subplot_plot(ax, l_x[0], l_test_nll, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('test negative log likelihood')
+    ax.legend(loc="upper right")
+    ax.set_title("test NLL")
+    ax.set_ylim([0, 1.2])
+
+    ax = fig.add_subplot(spec2[4, 0])
+    add_subplot_plot(ax, l_x[0], l_training_costs, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('value difference of the costmaps')
-    # ax.set_yscale('log')
     ax.legend(loc="upper right")
-    ax.set_title("costmap difference")
-    ax = fig.add_subplot(spec2[2, 0])
+    ax.set_title("training costmap difference")
+    ax.set_ylim([0, 0.6])
+
+    ax = fig.add_subplot(spec2[4, 1])
+    add_subplot_plot(ax, l_x[0], l_test_costs, l_name)
+    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_ylabel('value difference of the costmaps')
+    ax.legend(loc="upper right")
+    ax.set_title("test costmap difference")
+    ax.set_ylim([0, 0.6])
+
+    ax = fig.add_subplot(spec2[5, 0])
     add_subplot_plot(ax, l_x[0], l_learning_time, l_name)
-    ax.set_xlabel('# of demonstrations used')
+    ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('learning time in sec')
     ax.legend(loc="upper right")
     ax.set_title("learning time")
-    ax = fig.add_subplot(spec2[2, 1])
+    ax.set_ylim([0, 6000])
+
+    ax = fig.add_subplot(spec2[5, 1])
     add_subplot_plot(ax, l_x[0], l_prediction_time, l_name)
-    ax.set_xlabel('# of demonstrations used')
+    ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('inference time in sec')
     ax.legend(loc="upper right")
     ax.set_title("inference time")
-    ax = fig.add_subplot(spec2[2, 2])
+    ax.set_ylim([0, 3000])
+
+    ax = fig.add_subplot(spec2[6, 0])
     add_subplot_plot(ax, l_x[0], l_nb_steps, l_name)
-    ax.set_xlabel('# of demonstrations used')
+    ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('iteration steps')
     ax.legend(loc="upper right")
     ax.set_title("iteration steps")
+    ax.set_ylim([0, 40])
 
     fig.tight_layout()
     plt.savefig(directory)

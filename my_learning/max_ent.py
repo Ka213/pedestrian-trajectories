@@ -135,10 +135,10 @@ class MaxEnt():
 
 def get_maxEnt_loss(learned_maps, demonstrations, nb_samples, w=None):
     """ Returns the maxEnt loss with or without regularization factor """
-    loss = 0
-    for map, demo in zip(learned_maps, demonstrations):
+    loss = np.zeros(len(learned_maps))
+    for i, (map, demo) in enumerate(zip(learned_maps, demonstrations)):
         for _, d in enumerate(demo):
-            loss += np.sum(map[np.asarray(d)[:, 0], np.asarray(d)[:, 1]])
+            loss[i] += np.sum(map[np.asarray(d)[:, 0], np.asarray(d)[:, 1]])
     loss = (loss / nb_samples)
     if w is not None:
         loss += np.linalg.norm(w)

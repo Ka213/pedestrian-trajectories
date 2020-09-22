@@ -216,11 +216,12 @@ class Learch2D():
 def get_learch_loss(original_costmaps, optimal_paths, demonstrations, nb_samples,
                     l_2=None, l_proximal=None, w=None):
     """ Returns the LEARCH loss with or without regularization factor """
-    loss = 0
-    for map, demo, path in zip(original_costmaps, demonstrations, optimal_paths):
+    loss = np.zeros(len(original_costmaps))
+    for i, (map, demo, path) in enumerate(zip(original_costmaps, demonstrations,
+                                              optimal_paths)):
         for op, d in zip(path, demo):
-            loss += np.sum(map[np.asarray(d)[:, 0], np.asarray(d)[:, 1]]) \
-                    - np.sum(map[np.asarray(op)[:, 0], np.asarray(op)[:, 1]])
+            loss[i] += np.sum(map[np.asarray(d)[:, 0], np.asarray(d)[:, 1]]) \
+                       - np.sum(map[np.asarray(op)[:, 0], np.asarray(op)[:, 1]])
     loss = (loss / nb_samples)
     if l_2 is not None and l_proximal is not None and w is not None:
         loss += (l_2 + l_proximal) * np.linalg.norm(w)
