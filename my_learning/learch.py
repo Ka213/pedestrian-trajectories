@@ -108,7 +108,7 @@ class Learch2D():
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, self.w, step
+        return costmaps, optimal_paths, np.log(self.w), step
 
     class Learch_instance(Learch):
         """ Implements the LEARCH algorithm for one environment """

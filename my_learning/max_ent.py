@@ -19,7 +19,7 @@ class MaxEnt():
 
         self.convergence = 0.01
 
-        self.w = np.zeros(nb_rbfs ** 2)
+        self.w = np.exp(np.zeros(nb_rbfs ** 2))
         self.instances = []
 
     def add_environment(self, centers, paths, starts, targets):
