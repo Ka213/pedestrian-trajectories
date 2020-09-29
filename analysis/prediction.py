@@ -45,11 +45,8 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
         original_targets.append(targets)
         # Learn costmap
         l.add_environment(centers, paths, starts, targets)
-    if learning == 'learch':
-        learned_maps, optimal_paths, w_t, step_count = l.solve()
-        l2, l_proximal = l.get_regularization()
-    elif learning == 'maxEnt':
-        learned_maps, optimal_paths, w_t, step_count = l.solve()
+
+    learned_maps, optimal_paths, w_t, step_count = l.solve()
     learning_time = time.time() - learning_time_0
     nb_steps = step_count
 

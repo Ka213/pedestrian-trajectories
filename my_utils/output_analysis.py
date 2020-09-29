@@ -116,17 +116,25 @@ def plot_data(show_image, directory, directoryToSave=None):
         plt.savefig(directoryToSave)
 
 
-def add_subplot_plot(ax, x, y, name):
+def add_subplot_plot(ax, x, y, name, average):
     # ax.rc('axes', prop_cycle=(cycler('color', ['r', 'g', 'b', 'y'])))
-    for y_i, name_i in zip(y, name):
+    for x_i, y_i, name_i in zip(x, y, name):
         y_i = np.vstack(y_i)
         y_stddev = np.std(y_i, axis=1)
         y_i = np.average(y_i, axis=1)
-        ax.fill_between(x, y_i + y_stddev, y_i - y_stddev, alpha=0.5)
-        ax.plot(x, y_i, label=name_i)
+        ax.fill_between(x_i, y_i + y_stddev, y_i - y_stddev, alpha=0.5)
+        ax.plot(x_i, y_i, label=name_i)
+
+    if average:
+        y_stddev = np.std(y, axis=0)
+        y_i = np.average(y, axis=0)
+        a = y_i + y_stddev
+        b = y_i - y_stddev
+        ax.fill_between(x_i, a[:, 0], b[:, 0], alpha=0.5)
+        ax.plot(x_i, y_i, label='average')
 
 
-def compare_learning(directories, directory, names=None, title=None):
+def compare_learning(directories, directory, names=None, title=None, average=False):
     """ plot results different predictions into the same graph """
     l_x = []
     l_test_nll = []
@@ -171,40 +179,105 @@ def compare_learning(directories, directory, names=None, title=None):
         plt.suptitle(title, fontsize=20, y=1)
     spec2 = gridspec.GridSpec(ncols=cols, nrows=rows, figure=fig)
 
-    ax = fig.add_subplot(spec2[0, 0])
-    add_subplot_plot(ax, l_x[0], l_training_loss_l, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
-    ax.set_ylabel('LEARCH training loss')
-    ax.legend(loc="upper right")
-    ax.set_title("LEARCH training loss")
-    ax.set_ylim([-0.9, 0.1])
+    if title == 'Learch':
+        ax = fig.add_subplot(spec2[0, 0])
+        add_subplot_plot(ax, l_x, l_training_loss_l, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('Learch training loss')
+        ax.legend(loc="lower right")
+        ax.set_title("Learch training loss")
+        ax.set_ylim([-4, 4])
 
-    ax = fig.add_subplot(spec2[0, 1])
-    add_subplot_plot(ax, l_x[0], l_test_loss_l, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
-    ax.set_ylabel('LEARCH test loss')
-    ax.legend(loc="upper right")
-    ax.set_title("LEARCH test loss")
-    ax.set_ylim([-0.9, 0.1])
+        ax = fig.add_subplot(spec2[0, 1])
+        add_subplot_plot(ax, l_x, l_test_loss_l, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('Learch test loss')
+        ax.legend(loc="lower right")
+        ax.set_title("Learch test loss")
+        ax.set_ylim([-4, 4])
 
-    ax = fig.add_subplot(spec2[1, 0])
-    add_subplot_plot(ax, l_x[0], l_training_loss_m, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
-    ax.set_ylabel('maximum Entropy training loss')
-    ax.legend(loc="upper right")
-    ax.set_title("maximum Entropy training loss")
-    ax.set_ylim([0, 0.2])
+        ax = fig.add_subplot(spec2[1, 0])
+        add_subplot_plot(ax, l_x, l_training_loss_l, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('Learch training loss')
+        ax.legend(loc="lower right")
+        ax.set_title("Learch training loss")
+        ax.set_ylim([-1, 1])
 
-    ax = fig.add_subplot(spec2[1, 1])
-    add_subplot_plot(ax, l_x[0], l_test_loss_m, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
-    ax.set_ylabel('maximum Entropy test loss')
-    ax.legend(loc="upper right")
-    ax.set_title("maximum Entropy test loss")
-    ax.set_ylim([0, 0.2])
+        ax = fig.add_subplot(spec2[1, 1])
+        add_subplot_plot(ax, l_x, l_test_loss_l, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('Learch test loss')
+        ax.legend(loc="lower right")
+        ax.set_title("Learch test loss")
+        ax.set_ylim([-1, 1])
+    elif title == 'maximum Entropy':
+        ax = fig.add_subplot(spec2[0, 0])
+        add_subplot_plot(ax, l_x, l_training_loss_m, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('maximum entropy training loss')
+        ax.legend(loc="upper right")
+        ax.set_title("maximum entropy training loss")
+        ax.set_ylim([0, 4])
+
+        ax = fig.add_subplot(spec2[0, 1])
+        add_subplot_plot(ax, l_x, l_test_loss_m, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('maximum entropy test loss')
+        ax.legend(loc="upper right")
+        ax.set_title("maximum entropy test loss")
+        ax.set_ylim([0, 10])
+
+        ax = fig.add_subplot(spec2[1, 0])
+        add_subplot_plot(ax, l_x, l_training_loss_m, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('maximum Entropy training loss')
+        ax.legend(loc="upper right")
+        ax.set_title("maximum entropy training loss")
+        ax.set_ylim([0, 0.2])
+
+        ax = fig.add_subplot(spec2[1, 1])
+        add_subplot_plot(ax, l_x, l_test_loss_m, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('maximum entropy test loss')
+        ax.legend(loc="upper right")
+        ax.set_title("maximum entropy test loss")
+        ax.set_ylim([0, 0.2])
+    elif title == 'new algorithm':
+        ax = fig.add_subplot(spec2[0, 0])
+        add_subplot_plot(ax, l_x, l_training_loss_l, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('Learch training loss')
+        ax.legend(loc="lower right")
+        ax.set_title("Learch training loss")
+        ax.set_ylim([-4, 0.1])
+
+        ax = fig.add_subplot(spec2[0, 1])
+        add_subplot_plot(ax, l_x, l_test_loss_l, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('Learch test loss')
+        ax.legend(loc="lower right")
+        ax.set_title("Learch test loss")
+        ax.set_ylim([-4, 0.1])
+
+        ax = fig.add_subplot(spec2[1, 0])
+        add_subplot_plot(ax, l_x, l_training_loss_m, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('maximum entropy training loss')
+        ax.legend(loc="upper right")
+        ax.set_title("maximum entropy training loss")
+        ax.set_ylim([0, 4])
+
+        ax = fig.add_subplot(spec2[1, 1])
+        add_subplot_plot(ax, l_x, l_test_loss_m, l_name, average)
+        ax.set_xlabel('# of demonstrations used per environment')
+        ax.set_ylabel('maximum entropy test loss')
+        ax.legend(loc="upper right")
+        ax.set_title("maximum entropy test loss")
+        ax.set_ylim([0, 4])
 
     ax = fig.add_subplot(spec2[2, 0])
-    add_subplot_plot(ax, l_x[0], l_training_edt, l_name)
+    add_subplot_plot(ax, l_x, l_training_edt, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('training euclidean distance transform')
     ax.legend(loc="upper right")
@@ -212,7 +285,7 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 3.5])
 
     ax = fig.add_subplot(spec2[2, 1])
-    add_subplot_plot(ax, l_x[0], l_test_edt, l_name)
+    add_subplot_plot(ax, l_x, l_test_edt, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('test euclidean distance transform')
     ax.legend(loc="upper right")
@@ -220,7 +293,7 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 3.5])
 
     ax = fig.add_subplot(spec2[3, 0])
-    add_subplot_plot(ax, l_x[0], l_training_nll, l_name)
+    add_subplot_plot(ax, l_x, l_training_nll, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('training negative log likelihood')
     ax.legend(loc="upper right")
@@ -228,7 +301,7 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 1.2])
 
     ax = fig.add_subplot(spec2[3, 1])
-    add_subplot_plot(ax, l_x[0], l_test_nll, l_name)
+    add_subplot_plot(ax, l_x, l_test_nll, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('test negative log likelihood')
     ax.legend(loc="upper right")
@@ -236,7 +309,7 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 1.2])
 
     ax = fig.add_subplot(spec2[4, 0])
-    add_subplot_plot(ax, l_x[0], l_training_costs, l_name)
+    add_subplot_plot(ax, l_x, l_training_costs, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('value difference of the costmaps')
     ax.legend(loc="upper right")
@@ -244,7 +317,7 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 0.6])
 
     ax = fig.add_subplot(spec2[4, 1])
-    add_subplot_plot(ax, l_x[0], l_test_costs, l_name)
+    add_subplot_plot(ax, l_x, l_test_costs, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('value difference of the costmaps')
     ax.legend(loc="upper right")
@@ -252,7 +325,7 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 0.6])
 
     ax = fig.add_subplot(spec2[5, 0])
-    add_subplot_plot(ax, l_x[0], l_learning_time, l_name)
+    add_subplot_plot(ax, l_x, l_learning_time, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('learning time in sec')
     ax.legend(loc="upper right")
@@ -260,7 +333,7 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 6000])
 
     ax = fig.add_subplot(spec2[5, 1])
-    add_subplot_plot(ax, l_x[0], l_prediction_time, l_name)
+    add_subplot_plot(ax, l_x, l_prediction_time, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('inference time in sec')
     ax.legend(loc="upper right")
@@ -268,12 +341,12 @@ def compare_learning(directories, directory, names=None, title=None):
     ax.set_ylim([0, 3000])
 
     ax = fig.add_subplot(spec2[6, 0])
-    add_subplot_plot(ax, l_x[0], l_nb_steps, l_name)
+    add_subplot_plot(ax, l_x, l_nb_steps, l_name, average)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('iteration steps')
     ax.legend(loc="upper right")
     ax.set_title("iteration steps")
-    ax.set_ylim([0, 40])
+    ax.set_ylim([0, 60])
 
     fig.tight_layout()
     plt.savefig(directory)
