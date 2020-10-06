@@ -3,17 +3,15 @@ import common_import
 from pyrieef.learning.inverse_optimal_control import *
 from my_utils.my_utils import *
 from my_utils.environment import *
+from my_learning.irl import *
 
 
-class Learch2D():
+class Learch2D(Learning):
     """ Implements the LEARCH algorithm for a 2D squared map """
 
     def __init__(self, nb_points, nb_rbfs, sigma, workspace):
-        self.workspace = workspace
-        # Parameters to compute the cost map from RBFs
-        self.nb_points = nb_points
-        self.sigma = sigma
-        self.nb_rbfs = nb_rbfs
+        Learning.__init__(self, nb_points, nb_rbfs, sigma, workspace)
+
         # Parameters to compute the step size
         self._learning_rate = 1
         self._stepsize_scalar = 10
@@ -21,7 +19,7 @@ class Learch2D():
         self.convergence = 0.1
 
         self.w = np.exp(np.ones(nb_rbfs ** 2))
-        self.instances = []
+
 
     def add_environment(self, centers, paths, starts, targets):
         """ Add an new environment to the LEARCH computation """
@@ -41,20 +39,18 @@ class Learch2D():
 
     def n_steps(self, n, begin=0):
         """ Do n steps of the LEARCH algorithm over multiple environments """
-        step = begin
-        for i in range(n):
+        for step in range(begin, begin + n):
             print("step :", step)
             w_t = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
                 i.update(self.w)
-                w = i.one_step(step)
+                w = i.get_gradient()
                 w_t += w
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) *
                                      (w_t / len(self.instances)))
             print("step size: ", np.exp(get_stepsize(step, self._learning_rate,
                                                      self._stepsize_scalar)))
-            step += 1
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
@@ -67,7 +63,7 @@ class Learch2D():
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, self.w, step
+        return costmaps, optimal_paths, np.log(self.w), step
 
     def solve(self, begin=0):
         """ Compute the LEARCH over multiple environments
@@ -82,7 +78,7 @@ class Learch2D():
             w_t = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
                 i.update(self.w)
-                w = i.one_step(step)
+                w = i.get_gradient()
                 w_t += w
             # Gradient descent rule of the LEARCH algorithm
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
@@ -110,32 +106,23 @@ class Learch2D():
             i.optimal_paths.append(paths)
         return costmaps, optimal_paths, np.log(self.w), step
 
-    class Learch_instance(Learch):
+    class Learch_instance(Learch, Learning.Instance):
         """ Implements the LEARCH algorithm for one environment """
 
         def __init__(self, phi, paths, starts, targets, workspace):
             Learch.__init__(self, len(paths))
-            self.workspace = workspace
+            Learning.Instance.__init__(self, phi, paths, starts, targets,
+                                       workspace)
 
             # Parameters to compute the loss map
             self._loss_scalar = 1
             self._loss_stddev = 10
             # Regularization parameters for the linear regression
-            self._l2_regularizer = 0.1
+            self._l2_regularizer = 1
             self._proximal_regularizer = 0
 
-            # Examples
-            self.sample_trajectories = paths
-            self.sample_starts = starts
-            self.sample_targets = targets
-
-            self.phi = phi
-            self.w = np.exp(np.ones(phi.shape[0]))
-            self.costmap = np.tensordot(self.w, self.phi, axes=1)
             self.loss_map = np.zeros((len(paths), phi.shape[1], phi.shape[2]))
 
-            self.learned_maps = []
-            self.optimal_paths = []
             self.weights = []
 
             self.create_loss_maps()
@@ -146,19 +133,6 @@ class Learch2D():
                 self.loss_map[i] = scaled_hamming_loss_map(
                     t, self.phi.shape[1], self._loss_scalar, self._loss_stddev)
 
-        def update(self, w):
-            """ Update the weights and the costmap """
-            self.w = w
-            map = np.tensordot(self.w, self.phi, axes=1)
-            self.costmap = map
-            map = np.tensordot(np.log(self.w), self.phi, axes=1)
-            self.learned_maps.append(map)
-
-            map = map - np.amin(map)
-            _, _, paths = plan_paths(len(self.sample_trajectories), map,
-                                     self.workspace, starts=self.sample_starts,
-                                     targets=self.sample_targets)
-            self.optimal_paths.append(paths)
 
         def planning(self):
             """ Compute the optimal path for each start and
@@ -168,7 +142,8 @@ class Learch2D():
             """
             D = np.empty((3, 0))
             optimal_paths = []
-            for i, (s, t) in enumerate(zip(self.sample_starts, self.sample_targets)):
+            for i, (s, t) in enumerate(zip(self.sample_starts,
+                                           self.sample_targets)):
                 map = self.costmap - self.loss_map[i] - \
                       np.ones(self.costmap.shape) * \
                       np.amin(self.costmap - self.loss_map[i])
@@ -224,7 +199,7 @@ class Learch2D():
                 + self._l2_regularizer * self.w
             return g
 
-        def one_step(self, t):
+        def get_gradient(self):
             """ Compute one step of the LEARCH algorithm """
             d, optimal_paths = self.planning()
             w_new = self.supervised_learning(d)
