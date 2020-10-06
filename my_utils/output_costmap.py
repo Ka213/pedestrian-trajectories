@@ -435,6 +435,37 @@ def set_maxEnt_params(directory, m):
     return m
 
 
+def save_newAlg_params(directory, l):  # TODO update
+    """ Save the hyperparametes of an instance of the new algorithm in a file """
+    file = directory + '.npz'
+    np.savez(file, learning_rate=l._learning_rate, stepsize_scalar=
+    l._stepsize_scalar, N=l.instances[0]._N,
+             loss_scalar=l.instances[0]._loss_scalar,
+             loss_stddev=l.instances[0]._loss_stddev,
+             l2_regularizer=l.instances[0]._l2_regularizer,
+             proximal_regularizer=l.instances[0]._proximal_regularizer,
+             convergence=l.convergence, l_max=l._l_max)
+    return file
+
+
+def set_newAlg_params(directory, l):  # TODO update
+    """ Set the hyperparameters of an instance of the new algorithm according to
+        the values saved in the given file
+    """
+    file = np.load(directory)
+    l._learning_rate = file['learning_rate']
+    l._stepsize_scalar = file['stepsize_scalar']
+    l._l_max = file['l_max']
+    l.convergence = file['convergence']
+    for _, i in enumerate(l.instances):
+        i._loss_scalar = file['loss_scalar']
+        i._loss_stddev = file['loss_stddev']
+        i._l2_regularizer = file['l2_regularizer']
+        i._proximal_regularizer = file['proximal_regularizer']
+        i._N = file['N']
+    return l
+
+
 def save_results(directory, maps, optimal_paths, w_t, starts=None, targets=None,
                  paths=None):
     """ Save the results of the learning algorithm """

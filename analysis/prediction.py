@@ -1,16 +1,16 @@
 from common_import import *
 
-import time
 import datetime
 from pathlib import Path
 from multiprocessing import Pool
-from joblib import Parallel, delayed
-from my_utils.output_costmap import *
-from my_utils.output_analysis import *
-from my_utils.my_utils import *
-from my_utils.environment import *
 from my_learning.max_ent import *
 from my_learning.learch import *
+from my_learning.new_algorithm1 import *
+from my_learning.new_algorithm import *
+from my_learning.irl import *
+from my_learning.average import *
+from my_utils.output_costmap import *
+from my_utils.output_analysis import *
 
 
 def parallel_task(learning, nb_predictions, nb_env, range_test_env,
@@ -26,6 +26,14 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
         l = Learch2D(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'maxEnt':
         l = MaxEnt(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'new algorithm':
+        l = NewAlgorithm(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'new algorithm1':
+        l = NewAlgorithm_1(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'uniform':
+        l = Learning(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'average':
+        l = Average(nb_points, nb_rbfs, sigma, workspace)
     original_costmaps = []
     original_starts = []
     original_targets = []
@@ -99,6 +107,8 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
         save_learch_params(directory + "/params", l)
     elif learning == "maxEnt":
         save_maxEnt_params(directory + "/params", l)
+    elif learning == "new algorithm":
+        save_newAlg_params(directory + "/params", l)
 
     return learning_time, prediction_time, nb_steps, training_loss_l, \
            training_loss_m, training_edt, training_costs, training_nll, \
@@ -108,8 +118,9 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
 if __name__ == "__main__":
     show_result = 'SAVE'
     # set the learning method to evaluate
-    # choose between learch and maxEnt
-    learning = 'learch'
+    # choose between learch, maxEnt, new algorithm, new algorithm1,
+    # uniform and average
+    learning = 'uniform'
     nb_samples_l = 5
     nb_samples_u = 5
     step = 1
@@ -160,32 +171,8 @@ if __name__ == "__main__":
              test_nll, test_edt=test_edt, test_costs=test_costs)
 
     # Plot results
-    plot_avg_over_runs(x, nb_environments, directory + "/training_loss_l.png",
-                       loss=training_loss_l)
-    plot_avg_over_runs(x, nb_environments, directory + "/training_loss_m.png",
-                       loss=training_loss_m)
-    plot_avg_over_runs(x, nb_environments, directory + "/training_edt.png",
-                       loss=training_edt)
-    plot_avg_over_runs(x, nb_environments, directory + "/training_costs.png",
-                       loss=training_costs)
-    plot_avg_over_runs(x, nb_environments, directory + "/training_nll.png",
-                       loss=training_nll)
-    plot_avg_over_runs(x, nb_environments, directory + "/test_loss_l.png",
-                       loss=test_loss_l)
-    plot_avg_over_runs(x, nb_environments, directory + "/test_loss_m.png",
-                       loss=test_loss_m)
-    plot_avg_over_runs(x, nb_environments, directory + "/test_nll.png",
-                       loss=test_nll)
-    plot_avg_over_runs(x, nb_environments, directory + "/test_edt.png",
-                       loss=test_edt)
-    plot_avg_over_runs(x, nb_environments, directory + "/test_costs.png",
-                       loss=test_costs)
-    plot_avg_over_runs(x, nb_environments, directory + "/nb_steps.png",
-                       nb_steps=nb_steps)
-    plot_avg_over_runs(x, nb_environments, directory + "/learning_time.png",
-                       time=learning_time)
-    plot_avg_over_runs(x, nb_environments, directory + "/prediction_time.png",
-                       prediction_time=prediction_time)
+    compare_learning([results], directory + '/output.png',
+                     names=[learning], title=learning)
 
     file.write("duration: {}".format(time.time() - t_0) + 'sec \n')
 
