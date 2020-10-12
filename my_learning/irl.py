@@ -29,14 +29,14 @@ class Learning():
         self.instances.append(I)
 
     @abstractmethod
-    def n_steps(self, begin=0):
+    def n_steps(self, n, begin=0):
         """ Returns a one vector as weights """
         # compute the learned costmaps and their optimal paths
         # for the weight w
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
+            costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)
@@ -45,7 +45,7 @@ class Learning():
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, np.log(self.w), 0
+        return costmaps, optimal_paths, np.log(self.w), n
 
     @abstractmethod
     def solve(self, begin=0):
@@ -58,7 +58,7 @@ class Learning():
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
+            costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)
@@ -82,7 +82,7 @@ class Learning():
 
             self.phi = phi
             self.w = np.exp(np.ones(self.phi.shape[0]))
-            self.costmap = np.tensordot(self.w, self.phi, axes=1)
+            self.costmap = get_costmap(self.phi, np.log(self.w))
 
             self.learned_maps = []
             self.optimal_paths = []
@@ -91,9 +91,9 @@ class Learning():
         def update(self, w):
             """ Update the weights and the costmap """
             self.w = w
-            map = np.tensordot(self.w, self.phi, axes=1)
+            map = get_costmap(self.phi, self.w)
             self.costmap = map
-            map = np.tensordot(np.log(self.w), self.phi, axes=1)
+            map = get_costmap(self.phi, np.log(self.w))
             self.learned_maps.append(map)
 
             map = map - np.amin(map)

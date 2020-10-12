@@ -54,7 +54,7 @@ class Learch2D(Learning):
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
+            costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)
@@ -80,6 +80,7 @@ class Learch2D(Learning):
                 i.update(self.w)
                 w = i.get_gradient()
                 w_t += w
+            # w_t = w_t / w_t.sum()
             # Gradient descent rule of the LEARCH algorithm
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) *
@@ -95,7 +96,7 @@ class Learch2D(Learning):
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
+            costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)

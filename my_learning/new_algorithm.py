@@ -60,7 +60,7 @@ class NewAlgorithm(Learning):
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
+            costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)
@@ -86,6 +86,8 @@ class NewAlgorithm(Learning):
                 i.update(self.w)
                 w = i.get_gradient()
                 w_t += w
+            w_t = w_t / len(self.instances)
+            print(w_t.sum())
             w_t = w_t / w_t.sum()
             # Exponentiated gradient descent
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
@@ -101,7 +103,7 @@ class NewAlgorithm(Learning):
         costmaps = []
         optimal_paths = []
         for _, i in enumerate(self.instances):
-            costmap = np.tensordot(np.log(self.w), i.phi, axes=1)
+            costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
             map = costmap - np.amin(costmap)
@@ -121,7 +123,7 @@ class NewAlgorithm(Learning):
 
             # Parameters to compute the loss map
             self._loss_scalar = 1
-            self._loss_stddev = 10
+            self._loss_stddev = 5
             # Regularization parameters for the linear regression
             self._l2_regularizer = 1
             self._proximal_regularizer = 0
@@ -131,7 +133,7 @@ class NewAlgorithm(Learning):
 
             self.loss_map = np.zeros((len(paths), phi.shape[1], phi.shape[2]))
             self.transition_probability = \
-                get_transition_probabilities(self.costmap, phi.shape[1])
+                get_transition_probabilities(self.costmap)
 
             self.weights = []
 
@@ -142,6 +144,7 @@ class NewAlgorithm(Learning):
             for i, t in enumerate(self.sample_trajectories):
                 self.loss_map[i] = scaled_hamming_loss_map(
                     t, self.phi.shape[1], self._loss_scalar, self._loss_stddev)
+
 
         def planning(self):
             """ Compute the optimal path for each start and
@@ -196,9 +199,9 @@ class NewAlgorithm(Learning):
                 x2 = np.asarray(np.transpose(trajectory)[:][1])
                 d_ = np.vstack((x1, x2, - np.ones(x1.shape)))
                 d3 = np.hstack((d3, d_))
-
-            d1[2] = (d1[2]) * (self._l_max) * len(self.sample_trajectories)
-            d2[2] = (d2[2]) * (1 - self._l_max)
+            d1[2] = d1[2] / d1[2].sum() * d2[2].sum()
+            d1[2] = d1[2] * self._l_max
+            d2[2] = d2[2] * (1 - self._l_max)
             d12 = np.hstack((d1, d2))
             d = np.hstack((d12, d3))
             return d

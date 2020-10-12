@@ -116,8 +116,9 @@ def policy_iteration(costmap, nb_points, discount,
     return Q
 
 
-def get_transition_probabilities(costmap, nb_points):
+def get_transition_probabilities(costmap):
     """ Set transition probability matrix """
+    nb_points = costmap.shape[0]
     transition_probability = np.zeros((nb_points ** 2 * 8,
                                        nb_points ** 2))
     converter = CostmapToSparseGraph(costmap)

@@ -152,14 +152,14 @@ class MaxEnt(Learning):
 
             self.w = np.zeros(phi.shape[0])
             self.transition_probability = \
-                get_transition_probabilities(self.costmap, phi.shape[1])
+                get_transition_probabilities(self.costmap)
             self.f_empirical = get_empirical_feature_count \
                 (self.sample_trajectories, self.phi)
 
         def update(self, w):
             """ Update the weights and the costmap """
             self.w = w
-            map = np.tensordot(self.w, self.phi, axes=1)
+            map = get_costmap(self.phi, self.w)
             self.costmap = map
             self.learned_maps.append(map)
             map = self.costmap - np.amin(self.costmap)
