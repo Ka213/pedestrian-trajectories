@@ -7,6 +7,8 @@ from my_learning.max_ent import *
 from my_learning.learch import *
 from my_learning.new_algorithm1 import *
 from my_learning.new_algorithm import *
+from my_learning.only_push_down import *
+from my_learning.random import *
 from my_learning.irl import *
 from my_learning.average import *
 from my_utils.output_costmap import *
@@ -34,6 +36,10 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
         l = Learning(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'average':
         l = Average(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'random':
+        l = Random(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'onlyPushDown':
+        l = OnlyPushDown(nb_points, nb_rbfs, sigma, workspace)
     original_costmaps = []
     original_starts = []
     original_targets = []
@@ -119,8 +125,8 @@ if __name__ == "__main__":
     show_result = 'SAVE'
     # set the learning method to evaluate
     # choose between learch, maxEnt, new algorithm, new algorithm1,
-    # uniform and average
-    learning = 'uniform'
+    # oneVector or random
+    learning = 'random'
     nb_samples_l = 5
     nb_samples_u = 5
     step = 1

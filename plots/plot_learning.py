@@ -5,8 +5,8 @@ from my_learning.learch import *
 from my_learning.new_algorithm import *
 from my_learning.new_algorithm1 import *
 from my_learning.irl import *
-from my_learning.average import *
-from my_learning.maxEnt_then_learch import *
+from my_learning.only_push_down import *
+from my_learning.random import *
 from my_utils.environment import *
 from my_utils.my_utils import *
 from my_utils.output_costmap import *
@@ -32,12 +32,12 @@ elif learning == 'new algorithm':
     l = NewAlgorithm(nb_points, nb_rbfs, sigma, workspace)
 elif learning == 'new algorithm1':
     l = NewAlgorithm_1(nb_points, nb_rbfs, sigma, workspace)
-elif learning == 'uniform':
+elif learning == 'oneVector':
     l = Learning(nb_points, nb_rbfs, sigma, workspace)
-elif learning == 'average':
-    l = Average(nb_points, nb_rbfs, sigma, workspace)
-elif learning == 'maxEntThenLearch':
-    l = MaxEntThenLearch(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'random':
+    l = Random(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'onlyPushDown':
+    l = OnlyPushDown(nb_points, nb_rbfs, sigma, workspace)
 
 original_costmaps = []
 original_starts = []
@@ -75,13 +75,17 @@ training_nll = get_nll(optimal_paths, original_paths, nb_points, nb_samples)
 print("nll loss: ", np.average(training_nll))
 
 for j, i in enumerate(l.instances):
-    for k in range(int(nb_samples / 5)):
-        show_iteration(i.learned_maps, [original_costmaps[j]], workspace,
-                       show_result, starts=original_starts[j][k * 5:(k + 1) * 5],
-                       targets=original_targets[j][k * 5:(k + 1) * 5],
-                       paths=original_paths[j][k * 5:(k + 1) * 5],
-                       optimal_paths=np.asarray(i.optimal_paths)[:,
-                                     k * 5:(k + 1) * 5])
+    show_predictions(learned_maps[j], original_costmaps[j], workspace, show_result,
+                     starts=original_starts[j], targets=original_targets[j],
+                     paths=original_paths[j],
+                     optimal_paths=optimal_paths[j])
+    # for k in range(int(nb_samples / 5)):
+    #    show_iteration(i.learned_maps, [original_costmaps[j]], workspace,
+    #                   show_result, starts=original_starts[j][k * 5:(k + 1) * 5],
+    #                   targets=original_targets[j][k * 5:(k + 1) * 5],
+    #                   paths=original_paths[j][k * 5:(k + 1) * 5],
+    #                   optimal_paths=np.asarray(i.optimal_paths)[:,
+    #                                 k * 5:(k + 1) * 5])
 
 # Output learned costmaps
 show_multiple(learned_maps, original_costmaps, workspace, show_result)
