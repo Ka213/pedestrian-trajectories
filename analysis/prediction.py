@@ -15,12 +15,13 @@ from my_utils.output_costmap import *
 from my_utils.output_analysis import *
 
 
-def parallel_task(learning, nb_predictions, nb_env, range_test_env,
+def parallel_task(learning, nb_predictions, range_training_env, range_test_env,
                   workspace, i):
     print("# demonstrations: ", i)
     nb_points = 40
     nb_rbfs = 5
     sigma = 0.1
+    nb_training = 50
 
     learning_time_0 = time.time()
     # Learn costmap
@@ -44,7 +45,7 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
     original_starts = []
     original_targets = []
     original_paths = []
-    for k in range(nb_env):
+    for k in range_training_env:
         # file.write("training environment: " + "environment" + str(k) + '\n')
         w, original_costmap, s, t, p, centers = \
             load_environment("environment_sample_centers" + str(k))
@@ -54,25 +55,30 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
         starts = s[:i]
         targets = t[:i]
         paths = p[:i]
-        original_paths.append(paths)
-        original_starts.append(starts)
-        original_targets.append(targets)
+        original_paths.append(p[:nb_training])
+        original_starts.append(s[:nb_training])
+        original_targets.append(t[:nb_training])
         # Learn costmap
         l.add_environment(centers, paths, starts, targets)
 
-    learned_maps, optimal_paths, w_t, step_count = l.solve()
+    learned_maps, _, w_t, step_count = l.solve()
     learning_time = time.time() - learning_time_0
     nb_steps = step_count
+    optimal_paths = []
+    for j, k in enumerate(l.instances):
+        _, _, p = plan_paths(nb_training, learned_maps[j] -
+                             np.amin(learned_maps[j]), workspace,
+                             starts=original_starts[j],
+                             targets=original_targets[j])
+        optimal_paths.append(p)
 
     # Calculate training loss
     training_loss_l = get_learch_loss(original_costmaps, optimal_paths,
-                                      original_paths, i)
-    training_loss_m = get_maxEnt_loss(learned_maps, original_paths, i)
-
-    training_edt = get_edt_loss(nb_points, optimal_paths, original_paths,
-                                i)
+                                      original_paths, nb_training)
+    training_loss_m = get_maxEnt_loss(learned_maps, original_paths, nb_training)
+    training_edt = get_edt_loss(nb_points, optimal_paths, original_paths, nb_training)
     training_costs = get_overall_loss(learned_maps, original_costmaps)
-    training_nll = get_nll(optimal_paths, original_paths, nb_points, i)
+    training_nll = get_nll(optimal_paths, original_paths, nb_points, nb_training)
 
     # Predict paths
     prediction_time_0 = time.time()
@@ -89,12 +95,12 @@ def parallel_task(learning, nb_predictions, nb_env, range_test_env,
             "environment_sample_centers" + str(k))
         p_original_maps.append(p_costmap)
         # Learned Costmap
-        costmap = np.tensordot(w_t, get_phi(nb_points, p_centers, sigma,
-                                            workspace), axes=1)
+        phi = get_phi(nb_points, p_centers, sigma, workspace)
+        costmap = get_costmap(phi, w_t)
         p_learned_maps.append(costmap)
-        p_starts.append(s[i:i + nb_predictions])
-        p_targets.append(t[i:i + nb_predictions])
-        p_paths.append(p[i:i + nb_predictions])
+        p_starts.append(s[300:300 + nb_predictions])
+        p_targets.append(t[300:300 + nb_predictions])
+        p_paths.append(p[300:300 + nb_predictions])
         _, _, p = plan_paths(nb_predictions, costmap - np.amin(costmap), workspace,
                              starts=p_starts[-1], targets=p_targets[-1])
         predictions.append(p)
@@ -128,16 +134,14 @@ if __name__ == "__main__":
     # oneVector or random
     learning = 'random'
     nb_samples_l = 5
-    nb_samples_u = 5
-    step = 1
-    nb_environments = 1
-    nb_predictions = 100
-    range_test_env = np.arange(1)
-    foldername = '{}_{}env_{}-{}samples_{}predictions'.format(learning,
-                                                              nb_environments,
-                                                              nb_samples_l,
-                                                              nb_samples_u,
-                                                              nb_predictions)
+    nb_samples_u = 10
+    step = 5
+    range_training_env = np.arange(5)
+    nb_predictions = 50
+    range_test_env = np.arange(5, 10)
+    foldername = '{}_{}env_{}-{}samples_{}predictions' \
+        .format(learning, len(range_training_env), nb_samples_l, nb_samples_u,
+                nb_predictions)
     workspace = Workspace()
     directory = home + '/../results/prediction/' + foldername
     Path(directory).mkdir(parents=True, exist_ok=True)
@@ -149,7 +153,7 @@ if __name__ == "__main__":
     t_0 = time.time()
     pool = Pool()
     x = np.arange(nb_samples_l, nb_samples_u + 1, step)
-    y = [(learning, nb_predictions, nb_environments, range_test_env,
+    y = [(learning, nb_predictions, range_training_env, range_test_env,
           workspace, i) for i in x]
     result = pool.starmap(parallel_task, y)
     learning_time = loss = np.vstack(np.asarray(result)[:, 0])
