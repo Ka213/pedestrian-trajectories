@@ -19,7 +19,7 @@ def test_policy_iteration():
     w, original_costmap, starts, targets, paths, centers = \
         create_rand_env(nb_points, nb_rbfs, sigma, 0, workspace)
 
-    P = get_transition_probabilities(original_costmap, nb_points)
+    P = get_transition_probabilities(original_costmap)
     policy = policy_iteration(original_costmap, nb_points, discount, P)
     direction = np.argmax(policy, axis=1)
     print(direction)
@@ -69,7 +69,7 @@ def test_expected_edge_frequency():
                         workspace)
     Phi = get_phi(nb_points, centers, sigma, workspace)
 
-    P = get_transition_probabilities(original_costmap, nb_points)
+    P = get_transition_probabilities(original_costmap)
     D = get_expected_edge_frequency(P, original_costmap, N, nb_points, targets,
                                     paths, workspace)
     D = - D - np.min(-D)
@@ -78,7 +78,8 @@ def test_expected_edge_frequency():
     print("expected: ", (np.absolute(f - w)).sum())
     assert (np.absolute(f - w)).sum() < len(w) * 0.5
 
-    map = get_costmap(nb_points, centers, sigma, f, workspace)
+    phi = get_phi(nb_points, centers, sigma, workspace)
+    map = get_costmap(phi, f)
     show_multiple([map], [original_costmap], workspace, show_result,
                   # starts=starts, targets=targets, paths=paths,
                   title="expected state visitation frequency")
@@ -103,7 +104,8 @@ def test_get_empirical_feature_count():
     print("empirical features:", (np.absolute(f - w)).sum())
     assert (np.absolute(f - w)).sum() < len(w) * 0.5
 
-    map = get_costmap(nb_points, centers, sigma, f, workspace)
+    phi = get_phi(nb_points, centers, sigma, workspace)
+    map = get_costmap(phi, f)
     show_multiple([map], [original_costmap], workspace, show_result,
                   # starts=starts, targets=targets, paths=paths,
                   title="empirical feature counts")

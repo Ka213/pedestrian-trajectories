@@ -20,7 +20,8 @@ Phi = get_phi(nb_points, centers, sigma, workspace)
 f = get_empirical_feature_count(paths, Phi)
 f = - f - np.min(-f)
 
-map = get_costmap(nb_points, centers, sigma, f, workspace)
+phi = get_phi(nb_points, centers, sigma, workspace)
+map = get_costmap(phi, f)
 show_multiple([map], [original_costmap], workspace, show_result,
               # starts=starts, targets=targets, paths=paths,
               directory=home + '/../results/figures/feature_count.png',

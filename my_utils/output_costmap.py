@@ -8,7 +8,6 @@ import matplotlib.animation as animation
 import math
 import subprocess
 # print(matplotlib.get_backend())
-from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 import pyrieef.rendering.workspace_renderer as render
@@ -203,6 +202,49 @@ def show_multiple(costmaps, original_costmaps, workspace, show_result,
                                           viewer)
             if optimal_paths is not None:
                 show_optimal_paths(optimal_paths[i - cols], pixel_map, viewer)
+        viewer.remove_axis()
+    viewer._fig.tight_layout()
+
+    if title is not None:
+        viewer.set_title('\n'.join(wrap(title, 60)), fontsize=32)
+
+    if show_result == 'SHOW':
+        viewer.show_once()
+    elif show_result == 'SAVE':
+        viewer.save_figure(directory)
+
+
+def show_predictions(costmap, original_costmap, workspace, show_result,
+                     starts=None, targets=None, paths=None, optimal_paths=None,
+                     title=None, directory=None):
+    """ Show multiple maps and optional optimal example trajectories,
+        optimal trajectories
+    """
+    pixel_map = workspace.pixel_map(original_costmap.shape[0])
+    cols = math.ceil(math.sqrt(len(optimal_paths)))
+    rows = math.ceil(len(optimal_paths) / cols) + 1
+    viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True,
+                                    rows=rows, cols=cols,
+                                    scale=rows / (rows * cols))
+    viewer.draw_ws_img(original_costmap, interpolate="none")
+    viewer._ax.set_title('Training Costmap', size=32 / cols)
+    for i in range(cols):
+        viewer.set_drawing_axis(i)
+        viewer.remove_axis()
+
+    for i in range(cols, rows * cols):
+        viewer.set_drawing_axis(i)
+        if i < len(optimal_paths) + cols:
+            viewer.draw_ws_img(costmap, interpolate="none")
+            viewer._ax.set_title('Learned Costmap: \n {}.'.format(i + 1 - cols),
+                                 size=32 / cols)
+
+            if paths is not None:
+                show_example_trajectories([paths[i - cols]], pixel_map,
+                                          [starts[i - cols]], [targets[i - cols]],
+                                          viewer)
+            if optimal_paths is not None:
+                show_optimal_paths([optimal_paths[i - cols]], pixel_map, viewer)
         viewer.remove_axis()
     viewer._fig.tight_layout()
 

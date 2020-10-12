@@ -57,8 +57,8 @@ p_w, p_costmap, s, t, p, p_centers = load_environment(
     "environment_sample_centers0")
 p_original_maps.append(p_costmap)
 # Learned Costmap
-costmap = np.tensordot(w_t, get_phi(nb_points, p_centers, sigma,
-                                    workspace), axes=1)
+phi = get_phi(nb_points, p_centers, sigma, workspace)
+costmap = costmap = get_costmap(phi, w_t)
 x = nb_samples
 p_learned_maps.append(costmap)
 p_starts = s[x:x + nb_predictions]

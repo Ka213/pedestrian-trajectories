@@ -17,7 +17,7 @@ np.random.seed(1)
 w, original_costmap, starts, targets, paths, centers = \
     create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace)
 Phi = get_phi(nb_points, centers, sigma, workspace)
-P = get_transition_probabilities(original_costmap, nb_points)
+P = get_transition_probabilities(original_costmap)
 # Calculate state frequency
 D = get_expected_edge_frequency(P, original_costmap, N, nb_points,
                                 targets, paths, workspace)
@@ -27,9 +27,10 @@ show(D, workspace, show_result, starts=starts, targets=targets, paths=paths,
      title="expected state frequeny")
 
 D = - D - np.min(-D)
-f = np.tensordot(Phi, D)
+f = get_costmap(Phi, D)
 
-map = get_costmap(nb_points, centers, sigma, f, workspace)
+phi = get_phi(nb_points, centers, sigma, workspace)
+costmap = get_costmap(phi, f)
 show_multiple([map], [original_costmap], workspace, show_result,
               # starts=starts, targets=targets, paths=paths,
               directory=home + '/../results/figures/stateFrequencyCostmap.png',
