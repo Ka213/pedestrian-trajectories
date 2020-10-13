@@ -13,7 +13,8 @@ from my_utils.output_costmap import *
 
 show_result = 'SHOW'
 # set the learning method to evaluate
-# choose between learch, maxEnt, new algorithm, new alorithm1, uniform, average or maxEntThenLearch
+# choose between learch, maxEnt, new algorithm, new algorithm1
+# oneVector or random
 learning = 'new algorithm'
 nb_points = 40
 nb_rbfs = 5

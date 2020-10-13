@@ -11,9 +11,10 @@ learning = 'learch'
 nb_points = 40
 nb_rbfs = 5
 sigma = 0.1
-nb_samples = 100
-nb_predictions = 5
-# TODO update to multiple environments
+nb_samples = 60
+nb_predictions = 100
+nb_env = 1
+
 workspace = Workspace()
 # Learn costmap
 if learning == 'learch':

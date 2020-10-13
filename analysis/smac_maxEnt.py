@@ -34,9 +34,6 @@ def maxEnt(x):
             create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples,
                                     workspace)
         original_costmaps.append(original_costmap)
-        starts = starts[:nb_samples]
-        targets = targets[:nb_samples]
-        paths = paths[:nb_samples]
         original_paths.append(paths)
         original_starts.append(starts)
         original_targets.append(targets)

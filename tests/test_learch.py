@@ -93,9 +93,58 @@ def test_D():
          directory=home + '/../results/figures/map_with_D.png')
 
 
+def test_linear_regression_with_zero_states():
+    nb_points = 40
+    nb_rbfs = 5
+    sigma = 0.1
+    nb_samples = 20
+    nb_env = 5
+
+    workspace = Workspace()
+
+    l = Learch2D(nb_points, nb_rbfs, sigma, workspace)
+    original_costmaps = []
+    original_starts = []
+    original_targets = []
+    original_paths = []
+    for i in range(nb_env):
+        np.random.seed(i)
+        # Create random costmap
+        w, original_costmap, starts, targets, paths, centers = \
+            load_environment("environment_sample_centers" + str(2))  # \
+        #    create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace)
+        original_costmaps.append(original_costmap)
+        starts = starts[:nb_samples]
+        targets = targets[:nb_samples]
+        paths = paths[:nb_samples]
+        original_paths.append(paths)
+        original_starts.append(starts)
+        original_targets.append(targets)
+        # Learn costmap
+        l.add_environment(centers, paths, starts, targets)
+
+    for j, i in enumerate(l.instances):
+        D, optimal_paths = i.planning()
+        for k in range(nb_points):
+            for n in range(nb_points):
+                x = np.where(D[0] == k)
+                y = np.where(D[1] == n)
+                if len(np.intersect1d(x[0], y[0])) == 0:
+                    d = np.vstack((k, n, 0))
+                    D = np.hstack((D, d))
+        w_new = i.supervised_learning(D)
+
+        D, optimal_paths = i.planning()
+        w = i.supervised_learning(D)
+
+        print("new weights with other states put to zero: ", w_new)
+        print("new weights without other states put to zero: ", w)
+        assert not np.allclose(w, w_new, atol=1e-13, rtol=1e-14)
+        assert not np.array_equal(w, w_new)
 
 
 if __name__ == "__main__":
     show_result = 'SHOW'
     test_supervised_learning()
     test_D()
+    test_linear_regression_with_zero_states()

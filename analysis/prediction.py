@@ -33,7 +33,7 @@ def parallel_task(learning, nb_predictions, range_training_env, range_test_env,
         l = NewAlgorithm(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'new algorithm1':
         l = NewAlgorithm_1(nb_points, nb_rbfs, sigma, workspace)
-    elif learning == 'uniform':
+    elif learning == 'oneVector':
         l = Learning(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'average':
         l = Average(nb_points, nb_rbfs, sigma, workspace)
