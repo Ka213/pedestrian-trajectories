@@ -214,6 +214,65 @@ def show_multiple(costmaps, original_costmaps, workspace, show_result,
         viewer.save_figure(directory)
 
 
+def show_occupancy_maps(costmaps, original_costmap, workspace, show_result,
+                        occupancy, loss_augmented_maps, loss_augmented_occupancy,
+                        starts, targets, paths, optimal_paths,
+                        title=None, directory=None):
+    """
+    """
+    pixel_map = workspace.pixel_map(original_costmap.shape[0])
+    cols = 4
+    rows = len(costmaps) + 1
+    viewer = render.WorkspaceDrawer(workspace, wait_for_keyboard=True,
+                                    rows=rows, cols=cols,
+                                    scale=rows / (rows * cols))
+    viewer.draw_ws_img(original_costmap, interpolate="none")
+    viewer._ax.set_title('Training Costmap', size=32 / cols)
+    for i in range(cols):
+        viewer.set_drawing_axis(i)
+        viewer.remove_axis()
+
+    for i in range(1, rows):
+        viewer.set_drawing_axis(i * cols)
+        viewer.remove_axis()
+        viewer.draw_ws_img(costmaps[i - 1], interpolate="none")
+        viewer._ax.set_title('learned costmap: \n {}.'.format(i),
+                             size=32 / cols)
+        viewer.set_drawing_axis(i * cols + 1)
+        viewer.remove_axis()
+        viewer.draw_ws_img(loss_augmented_maps[i - 1], interpolate="none")
+        viewer._ax.set_title('loss augmented costmap: \n {}.'.format(i),
+                             size=32 / cols)
+        viewer.set_drawing_axis(i * cols + 2)
+        viewer.remove_axis()
+        viewer.draw_ws_img(occupancy[i - 1], interpolate="none")
+        viewer._ax.set_title('occupancy: \n {}.'.format(i), size=32 / cols)
+        if paths is not None:
+            show_example_trajectories(paths, pixel_map, starts, targets,
+                                      viewer)
+        if optimal_paths is not None:
+            show_optimal_paths(optimal_paths[i - 1], pixel_map, viewer)
+        viewer.set_drawing_axis(i * cols + 3)
+        viewer.remove_axis()
+        viewer.draw_ws_img(loss_augmented_occupancy[i - 1], interpolate="none")
+        viewer._ax.set_title('loss augmented occupancy: \n {}.'.format(i),
+                             size=32 / cols)
+        if paths is not None:
+            show_example_trajectories(paths, pixel_map, starts, targets,
+                                      viewer)
+        if optimal_paths is not None:
+            show_optimal_paths(optimal_paths[i - 1], pixel_map, viewer)
+    viewer._fig.tight_layout()
+
+    if title is not None:
+        viewer.set_title('\n'.join(wrap(title, 60)), fontsize=32)
+
+    if show_result == 'SHOW':
+        viewer.show_once()
+    elif show_result == 'SAVE':
+        viewer.save_figure(directory)
+
+
 def show_predictions(costmap, original_costmap, workspace, show_result,
                      starts=None, targets=None, paths=None, optimal_paths=None,
                      title=None, directory=None):
