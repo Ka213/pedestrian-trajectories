@@ -1,12 +1,13 @@
 import common_import
 
-from my_learning.max_ent import *
-from my_learning.learch import *
-from my_learning.new_algorithm import *
-from my_learning.new_algorithm1 import *
-from my_learning.irl import *
+from my_learning.new_avg_occ_optpath import *
+from my_learning.new_occ import *
+from my_learning.new_loss_aug_occ import *
 from my_learning.only_push_down import *
 from my_learning.random import *
+from my_learning.average import *
+from my_learning.maxEnt_then_learch import *
+from my_learning.nn_learning import *
 from my_utils.environment import *
 from my_utils.my_utils import *
 from my_utils.output_costmap import *
@@ -29,16 +30,28 @@ if learning == 'learch':
     l = Learch2D(nb_points, nb_rbfs, sigma, workspace)
 elif learning == 'maxEnt':
     l = MaxEnt(nb_points, nb_rbfs, sigma, workspace)
-elif learning == 'new algorithm':
-    l = NewAlgorithm(nb_points, nb_rbfs, sigma, workspace)
-elif learning == 'new algorithm1':
-    l = NewAlgorithm_1(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'avg_occ_path':
+    l = New_Avg_Occ_OptPath(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'occ':
+    l = New_Occ(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'loss_aug_occ':
+    l = New_Loss_Aug_Occ(nb_points, nb_rbfs, sigma, workspace)
 elif learning == 'oneVector':
     l = Learning(nb_points, nb_rbfs, sigma, workspace)
 elif learning == 'random':
     l = Random(nb_points, nb_rbfs, sigma, workspace)
 elif learning == 'onlyPushDown':
     l = OnlyPushDown(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'nn':
+    l = NN_Learning(nb_points, nb_rbfs, sigma, workspace)
+if learning == 'nn_learch':
+    l = NN_Learch(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'nn_maxEnt':
+    l = NN_MaxEnt(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'nn_occ':
+    l = NN_Occ(nb_points, nb_rbfs, sigma, workspace)
+elif learning == 'nn_loss_aug_occ':
+    l = NN_Loss_Aug_Occ(nb_points, nb_rbfs, sigma, workspace)
 
 original_costmaps = []
 original_starts = []

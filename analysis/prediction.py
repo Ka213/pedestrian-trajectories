@@ -5,10 +5,12 @@ from pathlib import Path
 from multiprocessing import Pool
 from my_learning.max_ent import *
 from my_learning.learch import *
-from my_learning.new_algorithm1 import *
-from my_learning.new_algorithm import *
+from my_learning.new_loss_aug_occ import *
+from my_learning.new_occ import *
+from my_learning.new_avg_occ_optpath import *
 from my_learning.only_push_down import *
 from my_learning.random import *
+from my_learning.nn_learning import *
 from my_learning.irl import *
 from my_learning.average import *
 from my_utils.output_costmap import *
@@ -30,9 +32,11 @@ def parallel_task(learning, nb_predictions, range_training_env, range_test_env,
     elif learning == 'maxEnt':
         l = MaxEnt(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'new algorithm':
-        l = NewAlgorithm(nb_points, nb_rbfs, sigma, workspace)
+        l = New_Avg_Occ_OptPath(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'new algorithm2':
+        l = New_Loss_Aug_Occ(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'new algorithm1':
-        l = NewAlgorithm_1(nb_points, nb_rbfs, sigma, workspace)
+        l = New_Occ(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'oneVector':
         l = Learning(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'average':
@@ -41,6 +45,15 @@ def parallel_task(learning, nb_predictions, range_training_env, range_test_env,
         l = Random(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'onlyPushDown':
         l = OnlyPushDown(nb_points, nb_rbfs, sigma, workspace)
+    if learning == 'nn_learch':
+        l = NN_Learch(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'nn_maxEnt':
+        l = NN_MaxEnt(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'nn_occ':
+        l = NN_Occ(nb_points, nb_rbfs, sigma, workspace)
+    elif learning == 'nn_loss_aug_occ':
+        l = NN_Loss_Aug_Occ(nb_points, nb_rbfs, sigma, workspace)
+
     original_costmaps = []
     original_starts = []
     original_targets = []
@@ -130,12 +143,12 @@ def parallel_task(learning, nb_predictions, range_training_env, range_test_env,
 if __name__ == "__main__":
     show_result = 'SAVE'
     # set the learning method to evaluate
-    # choose between learch, maxEnt, new algorithm, new algorithm1,
-    # oneVector or random
-    learning = 'random'
-    nb_samples_l = 5
-    nb_samples_u = 10
-    step = 5
+    # choose between learch, maxEnt, avg_occ_path, occ, loss_aug_occ
+    # oneVector, random, nn_learch, nn_maxEnt, nn_occ and nn_loss_aug_occ
+    learning = 'nn_learch'
+    nb_samples_l = 1
+    nb_samples_u = 20
+    step = 1
     range_training_env = np.arange(5)
     nb_predictions = 50
     range_test_env = np.arange(5, 10)
