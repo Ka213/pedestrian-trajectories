@@ -35,9 +35,11 @@ def get_empirical_feature_count(sample_trajectories, Phi):
     return f
 
 
-def get_expected_edge_frequency(transition_probability, costmap, N, nb_points,
-                                terminal_states, paths, workspace):
+def get_expected_edge_frequency(costmap, N, nb_points, terminal_states, paths,
+                                workspace):
     """ Return the expected state visitation frequency """
+    transition_probability = \
+        get_transition_probabilities(costmap)
     converter = CostmapToSparseGraph(costmap)
     converter.integral_cost = True
     graph = converter.convert()

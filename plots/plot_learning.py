@@ -14,11 +14,11 @@ from my_utils.output_costmap import *
 
 show_result = 'SHOW'
 # set the learning method to evaluate
-# choose between learch, maxEnt, new algorithm, new algorithm1
-# oneVector or random
-learning = 'new algorithm'
-nb_points = 40
-nb_rbfs = 5
+# choose between learch, maxEnt, avg_occ_path, occ, loss_aug_occ
+# oneVector, random, nn_learch, nn_maxEnt, nn_occ and nn_loss_aug_occ
+learning = 'loss_aug_occ'
+nb_points = 28
+nb_rbfs = 4
 sigma = 0.1
 nb_samples = 20
 nb_env = 1

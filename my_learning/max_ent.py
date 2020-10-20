@@ -174,8 +174,7 @@ class MaxEnt(Learning):
             f_empirical = self.f_empirical
             # Calculate the learners expected feature count
             try:
-                D = get_expected_edge_frequency(self.transition_probability,
-                                                self.costmap, self._N,
+                D = get_expected_edge_frequency(self.costmap, self._N,
                                                 self.phi.shape[1],
                                                 self.sample_targets,
                                                 self.sample_trajectories,

@@ -5,7 +5,7 @@ from my_utils.environment import *
 from my_learning.irl import *
 
 
-class NewAlgorithm_1(Learning):
+class New_Avg_Occ_OptPath(Learning):
     """ Implements the combined learning of the algorithms
         LEARCH and maximum Entropy
     """
@@ -17,6 +17,8 @@ class NewAlgorithm_1(Learning):
         self._learning_rate = 1
         self._stepsize_scalar = 1
 
+        self._l_max = 0.5
+
         self.convergence = 0.1
 
         self.w = np.exp(np.ones(nb_rbfs ** 2))
@@ -24,7 +26,8 @@ class NewAlgorithm_1(Learning):
     def add_environment(self, centers, paths, starts, targets):
         """ Add an new environment to the LEARCH computation """
         phi = get_phi(self.nb_points, centers, self.sigma, self.workspace)
-        C = NewAlgorithm_1.Instance(phi, paths, starts, targets, self.workspace)
+        C = New_Avg_Occ_OptPath.Instance(phi, paths, starts, targets, self.workspace,
+                                         self._l_max)
         self.instances.append(C)
 
     def get_regularization(self):
@@ -47,7 +50,7 @@ class NewAlgorithm_1(Learning):
                 w = i.get_gradient()
                 w_t += w
             w_t = w_t / w_t.sum()
-            # Gradient descent rule of the LEARCH algorithm
+            # Exponentiated gradient descent
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) * w_t)
             print("step size: ", get_stepsize(step, self._learning_rate,
@@ -114,19 +117,33 @@ class NewAlgorithm_1(Learning):
     class Instance(Learning.Instance):
         """ Implements the new algorithm for one environment """
 
-        def __init__(self, phi, paths, starts, targets, workspace):
+        def __init__(self, phi, paths, starts, targets, workspace, l_max):
             Learning.Instance.__init__(self, phi, paths, starts, targets,
                                        workspace)
+
+            # Parameters to compute the loss map
+            self._loss_scalar = 1
+            self._loss_stddev = 5
             # Regularization parameters for the linear regression
             self._l2_regularizer = 1
             self._proximal_regularizer = 0
 
             self._N = 150
+            self._l_max = l_max
 
+            self.loss_map = np.zeros((len(paths), phi.shape[1], phi.shape[2]))
             self.transition_probability = \
                 get_transition_probabilities(self.costmap)
 
             self.weights = []
+
+            self.create_loss_maps()
+
+        def create_loss_maps(self):
+            """ Create the loss maps for each sample trajectory """
+            for i, t in enumerate(self.sample_trajectories):
+                self.loss_map[i] = scaled_hamming_loss_map(
+                    t, self.phi.shape[1], self._loss_scalar, self._loss_stddev)
 
 
         def planning(self):
@@ -135,10 +152,18 @@ class NewAlgorithm_1(Learning):
                 Add the states to the set d where the cost function has to
                 increase/decrease
             """
+            optimal_paths = []
+            for i, (s, t) in enumerate(zip(self.sample_starts,
+                                           self.sample_targets)):
+                map = self.costmap - self.loss_map[i] - \
+                      np.ones(self.costmap.shape) * \
+                      np.amin(self.costmap - self.loss_map[i])
+                _, _, paths = plan_paths(1, map, self.workspace, starts=[s],
+                                         targets=[t])
+                optimal_paths.append(paths[0])
 
             try:
-                o = get_expected_edge_frequency(self.transition_probability,
-                                                self.costmap, self._N,
+                o = get_expected_edge_frequency(self.costmap, self._N,
                                                 self.phi.shape[1],
                                                 self.sample_targets,
                                                 self.sample_trajectories,
@@ -154,8 +179,18 @@ class NewAlgorithm_1(Learning):
             x1, x2 = np.meshgrid(X, Y)
             d1 = np.vstack((x1.flatten(), x2.flatten(), o.flatten()))
 
+            d2 = np.empty((3, 0))
             d3 = np.empty((3, 0))
-            for i, trajectory in enumerate(self.sample_trajectories):
+            for i, (trajectory, optimal_path) in enumerate(zip(
+                    self.sample_trajectories, optimal_paths)):
+                # Add the states of the optimal trajectory to d
+                # The costs should be increased in the states
+                # of the optimal trajectory
+                x1 = np.asarray(np.transpose(optimal_path)[:][0])
+                x2 = np.asarray(np.transpose(optimal_path)[:][1])
+                d_ = np.vstack((x1, x2, np.ones(x1.shape)))
+                d2 = np.hstack((d2, d_))
+
                 # Add the states of the example trajectory to d
                 # The costs should be decreased in the states
                 # of the example trajectory
@@ -163,9 +198,11 @@ class NewAlgorithm_1(Learning):
                 x2 = np.asarray(np.transpose(trajectory)[:][1])
                 d_ = np.vstack((x1, x2, - np.ones(x1.shape)))
                 d3 = np.hstack((d3, d_))
-
-            d1[2] = d1[2] / d1[2].sum() * -d3[2].sum()
-            d = np.hstack((d1, d3))
+            d1[2] = d1[2] / d1[2].sum() * d2[2].sum()
+            d1[2] = d1[2] * self._l_max
+            d2[2] = d2[2] * (1 - self._l_max)
+            d12 = np.hstack((d1, d2))
+            d = np.hstack((d12, d3))
             return d
 
         def supervised_learning(self, d):
@@ -175,9 +212,9 @@ class NewAlgorithm_1(Learning):
             c = d[:][2]
             x1 = d[:][0].astype(int)
             x2 = d[:][1].astype(int)
-            phi = self.phi[:, x1, x2].T
+            Phi = self.phi[:, x1, x2].T
 
-            w_new = linear_regression(phi, c, self.w,
+            w_new = linear_regression(Phi, c, self.w,
                                       self._l2_regularizer,
                                       self._proximal_regularizer)
             self.weights.append(w_new)
