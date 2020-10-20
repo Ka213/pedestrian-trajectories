@@ -1,0 +1,108 @@
+test_data:
+  filename: test_data
+  workspaces: test_data_workspaces
+  type: hdf5
+  numdatasets: 5
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 5
+  seed: 0
+  sigma: 0.1
+  display: False
+
+learch_data:
+  filename: learch_data
+  workspaces: learch_data_workspaces
+  type: hdf5
+  numdatasets: 1000
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 20
+  loss_stddev: 5
+  loss_scalar: 1
+  seed: 0
+  sigma: 0.1
+  display: False
+
+maxEnt_data:
+  filename: maxEnt_data
+  workspaces: maxEnt_data_workspaces
+  type: hdf5
+  numdatasets: 1000
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 20
+  N: 35
+  seed: 0
+  sigma: 0.1
+  display: False
+
+learch_data_10:
+  filename: learch_data_10
+  workspaces: learch_data_workspaces_10
+  type: hdf5
+  numdatasets: 1000
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 10
+  loss_stddev: 5
+  loss_scalar: 1
+  seed: 0
+  sigma: 0.1
+  display: False
+
+maxEnt_data_10:
+  filename: maxEnt_data_10
+  workspaces: maxEnt_data_workspaces_10
+  type: hdf5
+  numdatasets: 1000
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 10
+  N: 35
+  seed: 0
+  sigma: 0.1
+  display: False
+
+occ_data_10:
+  filename: occ_data_10
+  workspaces: occ_data_workspaces_10
+  type: hdf5
+  numdatasets: 1000
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 10
+  N: 35
+  seed: 0
+  sigma: 0.1
+  display: False
+
+loss_aug_occ_data_10:
+  filename: loss_aug_occ_data_10
+  workspaces: loss_aug_occ_data_workspaces_10
+  type: hdf5
+  numdatasets: 1000
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 10
+  loss_stddev: 5
+  loss_scalar: 1
+  N: 35
+  seed: 0
+  sigma: 0.1
+  display: False
+
+occ_learch_data_10:
+  filename: occ_learch_data_10
+  workspaces: occ_learch_data_workspaces_10
+  type: hdf5
+  numdatasets: 1000
+  nb_points: 28
+  nb_rbfs: 4
+  nb_samples: 10
+  loss_stddev: 5
+  loss_scalar: 1
+  N: 35
+  seed: 0
+  sigma: 0.1
+  display: False
