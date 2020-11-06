@@ -127,21 +127,23 @@ def sample_circle_workspace(box,
 
 
 def random_environments(opt):
-    lims = np.array([[0., 1.], [0., 1.]])
     size = np.array([opt.nb_points, opt.nb_points])
     numdatasets = opt.numdatasets
     nb_points = opt.nb_points
     nb_rbfs = opt.nb_rbfs
     sigma = opt.sigma
     nb_samples = opt.nb_samples
+    starts = opt.starts
+    targets = opt.targets
+    # TODO remove
     if hasattr(opt, 'loss_stddev'):
         loss_stddev = opt.loss_stddev
     if hasattr(opt, 'loss_scalar'):
         loss_scalar = opt.loss_scalar
     if hasattr(opt, 'N'):
         N = opt.N
-
     save_workspace = True
+    save_paths = True
     if opt.seed >= 0:
         print(("set random seed ({})".format(opt.seed)))
         np.random.seed(opt.seed)
@@ -149,56 +151,71 @@ def random_environments(opt):
     # Create a bunch of datasets
     datasets = [None] * numdatasets
     dataws = [None] * numdatasets
+    datap = [None] * numdatasets
+
+    # Create empty workspace.
+    workspace = Workspace()
 
     print(("Num datasets : " + str(numdatasets)))
     for k in tqdm(list(range(numdatasets))):
 
         w, original_costmap, starts, targets, paths, centers = \
             create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples,
-                                    Workspace())
+                                    Workspace(), starts=starts, targets=targets)
         phi = get_phi(nb_points, centers, sigma, Workspace())
 
-        algorithm = opt.filename.split('_')[:-1]
+        algorithm = (opt.filename.split('_')[:-2])
+        algorithm = '_'.join(algorithm)
         map = np.zeros((nb_points, nb_points))
-        if algorithm == 'learch':
-            map = get_costmap(phi, np.exp(np.zeros((nb_rbfs ** 2))))
-            map = get_learch_input(map, paths, starts, targets, loss_stddev,
-                                   loss_scalar)
+        if algorithm == 'learch' or algorithm == 'test':
+            map = np.exp(get_costmap(phi, np.ones(nb_rbfs ** 2)))
+            map, op = get_learch_target(map, paths, starts, targets, loss_stddev,
+                                        loss_scalar)
         elif algorithm == 'maxEnt':
-            map = get_maxEnt_input(map, N, paths, targets, phi)
+            map = get_maxEnt_target(map, N, paths, starts, targets, phi)
         elif algorithm == 'occ':
-            map = get_occ_input(map, N, paths, targets)
+            map = get_esf_target(map, N, paths, starts, targets)
         elif algorithm == 'loss_aug_occ':
-            map = get_loss_aug_occ_input(map, paths, targets, loss_scalar,
-                                         loss_stddev, N)
+            map = get_loss_aug_est_target(map, paths, starts, targets, loss_scalar,
+                                          loss_stddev, N)
         elif algorithm == 'occ_learch':
-            map = get_avg_learch_occ_input()
-        # print(np.array([map, original_costmap]).dtype)
-        datasets[k] = np.array([map, original_costmap])
+            map = get_avg_learch_esf_target()
+        # elif algorithm == 'test':
+        #    map = original_costmap
+        elif algorithm == 'test_exp':
+            map = get_costmap(phi, np.exp(w))
 
-        if save_workspace:  # TODO
-            centers = np.asarray(centers)
-            c1 = centers[:, 0]
-            c2 = centers[:, 1]
-            dataws[k] = phi  # np.array([w, c1, c2])
+        occ = original_costmap >= 0.6
+        onemap = get_costmap(phi, np.ones(nb_rbfs ** 2))
+
+        datasets[k] = np.array([occ, map, original_costmap, onemap])
+
+        if save_workspace:
+            dataws[k] = np.hstack((phi.reshape(nb_rbfs ** 2, -1),
+                                   np.array(centers)))
+
+        if save_paths:
+            datap[k] = paths
 
         if opt.display:
-            show_multiple([map], [original_costmap], Workspace(), 'SHOW')
-            break
+            show_multiple([occ, map], [original_costmap],
+                          workspace, 'SHOW')
 
     data = {}
-    data["lims"] = lims
     data["size"] = size
     data["datasets"] = np.stack(datasets)
 
     print((np.stack(datasets).shape))
     print((np.stack(dataws).shape))
+    print((np.stack(datap).shape))
+
     workspaces = {}
-    workspaces["lims"] = lims
     workspaces["size"] = size
     workspaces["datasets"] = np.stack(dataws)
 
-    return data, workspaces
+    endpoints = np.array([starts, targets])
+
+    return data, workspaces, datap, endpoints
 
 
 def get_dataset_id(data_id):
@@ -222,10 +239,13 @@ def get_dataset_id(data_id):
         assert options.nb_points == data.test_inputs.shape[2]
         return data
     else:
-        datasets, workspaces = random_environments(options)
+        datasets, workspaces, demonstrations, ep = random_environments(options)
         my_dataset.write_dictionary_to_file(datasets, filename)
         my_dataset.write_dictionary_to_file(
             workspaces, options.workspaces + "." + options.type)
+        my_dataset.save_paths_to_file(demonstrations, options.trajectories +
+                                      "." + options.type)
+        my_dataset.write_data_to_file(ep, options.endpoints + "." + options.type)
         return get_dataset_id(data_id)
 
 
@@ -299,6 +319,15 @@ class RandomEnvironmentOptions:
                           dest='seed',
                           help='Random number seed. -ve values\
                            mean random seed')
+        parser.add_option('--starts',
+                          default=None,
+                          type="float64",
+                          dest='starts',
+                          help='start points of the demonstrations')
+        parser.add_option('--targets',
+                          default=None, type="float64",
+                          dest='targets',
+                          help='end points of the demonstrations')
 
         return parser
 

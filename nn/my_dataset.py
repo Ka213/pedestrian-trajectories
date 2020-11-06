@@ -20,6 +20,8 @@
 from common_import import *
 import numpy as np
 
+from my_utils.environment import *
+
 driectory = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, driectory + os.sep + "..")
 import h5py
@@ -29,6 +31,7 @@ from pyrieef.utils.misc import *
 import numpy as np
 from pyrieef.geometry.workspace import *
 from pyrieef.motion.trajectory import Trajectory
+from tqdm import tqdm
 
 
 # TODO write some import test
@@ -151,7 +154,6 @@ def load_workspaces_from_file(filename='workspaces_1k_small.hdf5'):
     """ Load data from an hdf5 file """
     data_ws = dict_to_object(load_dictionary_from_file(filename))
     print((" -- size : ", data_ws.size))
-    print((" -- lims : ", data_ws.lims.flatten()))
     print((" -- datasets.shape : ", data_ws.datasets.shape))
     print((" -- data_ws.shape : ", data_ws.datasets.shape))
     workspaces = [None] * len(data_ws.datasets)
@@ -174,11 +176,10 @@ def save_paths_to_file(paths, filename='paths_1k_demos.hdf5'):
 
 
 def load_paths_from_file(filename='paths_1k_demos.hdf5'):
-    np.set_printoptions(
-        suppress=True,
-        linewidth=200, precision=0,
-        formatter={'float_kind': '{:8.0f}'.format})
-
+    # np.set_printoptions(
+    #    suppress=True,
+    #    linewidth=200, precision=0,
+    #    formatter={'float_kind': '{:8.0f}'.format})
     paths = []
     with h5py.File(learning_data_dir() + os.sep + filename, 'r') as f:
         for environment in f:
@@ -262,6 +263,39 @@ class CostmapDataset(object):
     def epochs_completed(self):
         return self._epochs_completed
 
+    def update_targets(self, costs, workspace):
+        def create_target(i):
+            demonstrations = workspace[i].demonstrations
+            starts = workspace[i].starts
+            targets = workspace[i].targets
+            costmap = costs[i]
+            map = costmap - costmap.min()
+            _, _, paths = plan_paths(len(demonstrations), map, Workspace(),
+                                     starts=starts, targets=targets)
+            target = np.zeros(costmap.shape)
+            for demo, path in zip(demonstrations, paths):
+                x1 = np.asarray(demo)[:, 0]
+                x2 = np.asarray(demo)[:, 1]
+                target[x1, x2] += costmap[x1, x2] - 1
+                x1 = np.asarray(path)[:, 0]
+                x2 = np.asarray(path)[:, 1]
+                target[x1, x2] += costmap[x1, x2] + 1
+            # target = workspace[i].costmap
+            return target.reshape(-1)
+
+        print("update target costmaps")
+        time_0 = time.time()
+        pbar = tqdm(total=self._max_index)
+        for i in range(len(self.train_targets)):
+            self.train_targets[i] = create_target(i)
+            pbar.update(1)
+        for j in range(len(self.test_targets)):
+            self.test_targets[j] = create_target(j + self._num_examples)
+            pbar.update(1)
+        pbar.close()
+        print("took t : {} sec.".format(time.time() - time_0))
+        self.normalize_targets()
+
     def reshape_data_to_tensors(self):
 
         def reshape_inputs_to_tensor(data):
@@ -282,6 +316,10 @@ class CostmapDataset(object):
     def normalize_maps(self):
         """ normalize all maps"""
 
+        self.normalize_targets()
+        self.flip_inputs()
+
+    def normalize_targets(self):
         def normalize(data):
             for costmap in data:
                 costmap[:] = costmap - costmap.min()
@@ -290,6 +328,7 @@ class CostmapDataset(object):
         normalize(self.train_targets)
         normalize(self.test_targets)
 
+    def flip_inputs(self):
         def flip(data):
             for costmap in data:
                 costmap[:] = 1. - costmap
@@ -371,31 +410,44 @@ class CostmapDataset(object):
 class WorkspaceData:
 
     def __init__(self):
-        self.workspace = None
         self.occupancy = None
+        self.gradient = None
         self.costmap = None
-        self.signed_distance_field = None
+        self.onemap = None
         self.demonstrations = None
+        self.starts = None
+        self.targets = None
+        self.phi = None
+        self.centers = None
 
 
 def load_workspace_dataset(basename="1k_small.hdf5"):
     file_ws = 'workspaces_' + basename
-    file_cost = 'costdata2d_' + basename
+    file_cost = basename
     file_trj = 'trajectories_' + basename
+    file_ep = 'endpoints_' + basename
     workspaces = load_workspaces_from_file(file_ws)
-    trajectories = load_trajectories_from_file(file_trj)
+    trajectories = load_paths_from_file(file_trj)
     data = dict_to_object(load_dictionary_from_file(file_cost))
-    print(len(trajectories))
-    print(len(data.datasets))
+    endpoints = load_data_from_file(file_ep)
+    # print(len(trajectories))
+    # print(len(data.datasets))
     assert len(workspaces) == len(data.datasets)
     assert len(trajectories) == len(data.datasets)
     workspaces_dataset = [None] * len(workspaces)
-    for k, data_file in enumerate(data.datasets):
+    for k, (data_file, ws_file, traj_file) in enumerate(zip(data.datasets,
+                                                            workspaces,
+                                                            trajectories)):
         ws = WorkspaceData()
-        ws.workspace = workspaces[k]
-        ws.demonstrations = [trajectories[k]]
+        ws.demonstrations = traj_file
+        ws.starts = endpoints[0]
+        ws.targets = endpoints[1]
         ws.occupancy = data_file[0]
-        ws.signed_distance_field = data_file[1]
+        ws.gradient = data_file[1]
         ws.costmap = data_file[2]
+        ws.onemap = data_file[3]
+        ws.centers = ws_file[:, -2:].reshape((16, 2))
+        ws.phi = ws_file[:, :-2].reshape((len(ws.centers), ws.costmap.shape[0],
+                                          ws.costmap.shape[1]))
         workspaces_dataset[k] = ws
     return workspaces_dataset
