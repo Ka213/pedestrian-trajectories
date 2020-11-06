@@ -3,16 +3,21 @@ from common_import import *
 from my_utils.output_analysis import *
 import datetime
 
-file1 = 'new algorithm1_1env_5-100samples_50predictions_1'
-file2 = 'new algorithm1_1env_5-100samples_50predictions_2'
-file3 = 'new algorithm1_1env_5-100samples_50predictions_3'
-file4 = 'new algorithm1_1env_5-100samples_50predictions_4'
-file5 = 'new algorithm1_1env_5-100samples_50predictions_5'
-directoryToSave = 'new algorithm1_5env_5-100samples_50predictions_average'
+file1 = 'maxEnt_1env_1-20samples_20predictions_[0]'
+file2 = 'maxEnt_1env_1-20samples_20predictions_[1]'
+file3 = 'maxEnt_1env_1-20samples_20predictions_[2]'
+file4 = 'maxEnt_1env_1-20samples_20predictions_[3]'
+file5 = 'maxEnt_1env_1-20samples_20predictions_[4]'
+file6 = 'maxEnt_1env_1-20samples_20predictions_[5]'
+file7 = 'maxEnt_1env_1-20samples_20predictions_[6]'
+file8 = 'maxEnt_1env_1-20samples_20predictions_[7]'
+file9 = 'maxEnt_1env_1-20samples_20predictions_[8]'
+file10 = 'maxEnt_1env_1-20samples_20predictions_[9]'
+directoryToSave = 'maxEnt_1env_1-20samples_20predictions_average'
 
-files = [file1, file2, file3, file4, file5]
+files = [file1, file2, file3, file4, file5, file6, file7, file8, file9, file10]
 
-path = home + '/../results/prediction_testOnDemonstrations/'
+path = home + '/../results/prediction_rbfs_28/'
 
 directory = path + files[0] + '/results.npz'
 l = np.load(directory, allow_pickle=True)
@@ -75,6 +80,8 @@ l_test_edt = np.average(l_test_edt, axis=a)
 l_test_nll = np.average(l_test_nll, axis=a)
 l_test_costs = np.average(l_test_costs, axis=a)
 
+os.makedirs(path + directoryToSave)
+
 file = open(path + directoryToSave + "/metadata.txt", "w")
 file.write("date: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
            + '\n')
@@ -95,5 +102,5 @@ np.savez(results, x=l_x[0], learning_time=np.average(l_learning_time, axis=0),
          test_edt=l_test_edt,
          test_costs=l_test_costs)
 
-compare_learning([results], path + directoryToSave + '/output.png',
+compare_learning([results], path + directoryToSave + '/output.pdf',
                  names=['average'])

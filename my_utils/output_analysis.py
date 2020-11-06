@@ -1,9 +1,10 @@
-import common_import
+from common_import import *
 
 from textwrap import wrap
 import numpy as np
 from matplotlib import cm, gridspec
 import matplotlib
+from matplotlib.ticker import MaxNLocator
 import math
 # print(matplotlib.get_backend())
 import matplotlib.pyplot as plt
@@ -123,9 +124,11 @@ def add_subplot_plot(ax, x, y, name):
         y_i = np.average(y_i, axis=1)
         ax.fill_between(x_i, y_i + y_stddev, y_i - y_stddev, alpha=0.5)
         ax.plot(x_i, y_i, label=name_i)
+        ax.xaxis.get_major_locator().set_params(integer=True)
 
 
-def compare_learning(directories, directory, names=None, title=None, average=False):
+def compare_learning(directories, directory, names=None, title=None,
+                     single=False):
     """ plot results different predictions into the same graph """
     l_x = []
     l_test_nll = []
@@ -165,44 +168,60 @@ def compare_learning(directories, directory, names=None, title=None, average=Fal
     # Plot each measurement in one graph
     rows = 7
     cols = 2
-    fig = plt.figure(figsize=(cols * 7, rows * 7))
+    axes = []
+    figures = []
+    if single:
+        for i in range(13):
+            fig = plt.figure(figsize=(7, 7))
+            figures.append(fig)
+            ax = fig.add_subplot(111)
+            axes.append(ax)
+    else:
+        fig = plt.figure(figsize=(cols * 7, rows * 7))
+        spec2 = gridspec.GridSpec(ncols=cols, nrows=rows, figure=fig)
+        figures.append(fig)
+        for i in range(rows):
+            for j in range(cols):
+                if i * j == 6:
+                    break
+                axes.append(fig.add_subplot(spec2[i, j]))
+
     if title is not None:
         plt.suptitle(title, fontsize=20, y=1)
-    spec2 = gridspec.GridSpec(ncols=cols, nrows=rows, figure=fig)
 
-    ax = fig.add_subplot(spec2[0, 0])
+    ax = axes[0]
     add_subplot_plot(ax, l_x, l_training_loss_l, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('Learch training loss')
     ax.legend(loc="lower right")
     ax.set_title("Learch training loss")
-    ax.set_ylim([-2, 0.1])
+    ax.set_ylim([-1, 0.1])
 
-    ax = fig.add_subplot(spec2[0, 1])
+    ax = axes[1]
     add_subplot_plot(ax, l_x, l_test_loss_l, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('Learch test loss')
     ax.legend(loc="lower right")
     ax.set_title("Learch test loss")
-    ax.set_ylim([-2, 0.1])
+    ax.set_ylim([-0.3, 0.1])
 
-    ax = fig.add_subplot(spec2[1, 0])
+    ax = axes[2]
     add_subplot_plot(ax, l_x, l_training_loss_m, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('maximum entropy training loss')
     ax.legend(loc="upper right")
     ax.set_title("maximum entropy training loss")
-    ax.set_ylim([0, 2])
+    ax.set_ylim([0, 10])
 
-    ax = fig.add_subplot(spec2[1, 1])
+    ax = axes[3]
     add_subplot_plot(ax, l_x, l_test_loss_m, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('maximum entropy test loss')
     ax.legend(loc="upper right")
     ax.set_title("maximum entropy test loss")
-    ax.set_ylim([0, 2])
+    ax.set_ylim([0, 10])
 
-    ax = fig.add_subplot(spec2[2, 0])
+    ax = axes[4]
     add_subplot_plot(ax, l_x, l_training_edt, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('training euclidean distance transform')
@@ -210,7 +229,7 @@ def compare_learning(directories, directory, names=None, title=None, average=Fal
     ax.set_title("training euclidean distance transform")
     ax.set_ylim([0, 2])
 
-    ax = fig.add_subplot(spec2[2, 1])
+    ax = axes[5]
     add_subplot_plot(ax, l_x, l_test_edt, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('test euclidean distance transform')
@@ -218,7 +237,7 @@ def compare_learning(directories, directory, names=None, title=None, average=Fal
     ax.set_title("test euclidean distance transform")
     ax.set_ylim([0, 2])
 
-    ax = fig.add_subplot(spec2[3, 0])
+    ax = axes[6]
     add_subplot_plot(ax, l_x, l_training_nll, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('training negative log likelihood')
@@ -226,7 +245,7 @@ def compare_learning(directories, directory, names=None, title=None, average=Fal
     ax.set_title("training NLL")
     ax.set_ylim([0, 2])
 
-    ax = fig.add_subplot(spec2[3, 1])
+    ax = axes[7]
     add_subplot_plot(ax, l_x, l_test_nll, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('test negative log likelihood')
@@ -234,48 +253,57 @@ def compare_learning(directories, directory, names=None, title=None, average=Fal
     ax.set_title("test NLL")
     ax.set_ylim([0, 2])
 
-    ax = fig.add_subplot(spec2[4, 0])
+    ax = axes[8]
     add_subplot_plot(ax, l_x, l_training_costs, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('value difference of the costmaps')
     ax.legend(loc="upper right")
     ax.set_title("training costmap difference")
-    ax.set_ylim([0, 1])
+    ax.set_ylim([0, 0.5])
 
-    ax = fig.add_subplot(spec2[4, 1])
+    ax = axes[9]
     add_subplot_plot(ax, l_x, l_test_costs, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('value difference of the costmaps')
     ax.legend(loc="upper right")
     ax.set_title("test costmap difference")
-    ax.set_ylim([0, 1])
+    ax.set_ylim([0, 0.5])
 
-    ax = fig.add_subplot(spec2[5, 0])
+    ax = axes[10]
     add_subplot_plot(ax, l_x, l_learning_time, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('learning time in sec')
     ax.legend(loc="upper right")
     ax.set_title("learning time")
-    ax.set_ylim([0, 1000])
+    # ax.set_ylim([0, 1000])
 
-    ax = fig.add_subplot(spec2[5, 1])
+    ax = axes[11]
     add_subplot_plot(ax, l_x, l_prediction_time, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('inference time in sec')
     ax.legend(loc="upper right")
     ax.set_title("inference time")
-    ax.set_ylim([0, 200])
+    # ax.set_ylim([0, 200])
 
-    ax = fig.add_subplot(spec2[6, 0])
+    ax = axes[12]
     add_subplot_plot(ax, l_x, l_nb_steps, l_name)
     ax.set_xlabel('# of demonstrations used per environment')
     ax.set_ylabel('iteration steps')
     ax.legend(loc="upper right")
     ax.set_title("iteration steps")
-    ax.set_ylim([0, 60])
-
-    fig.tight_layout()
-    plt.savefig(directory)
+    # ax.set_ylim([0, 60])
+    if single:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        names = ['learch_train_loss', 'learch_test_loss', 'maxEnt_train_loss',
+                 'maxEnt_test_loss', 'edt_train_loss', 'edt_test_loss',
+                 'nll_train_loss', 'nll_test_loss', 'costs_train_loss',
+                 'costs_test_loss', 'learning_time', 'inference time', 'steps']
+        for f, n in zip(figures, names):
+            f.savefig(directory + '/' + n + '.pdf', bbox_inches='tight')
+    else:
+        fig.tight_layout()
+        plt.savefig(directory + '.pdf')
 
 
 def plot_loss_fix_nbSamples(error, nb_samples, nb_runs, directory):

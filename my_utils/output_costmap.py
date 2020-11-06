@@ -216,7 +216,8 @@ def show_multiple(costmaps, original_costmaps, workspace, show_result,
 
 def show_occupancy_maps(costmaps, original_costmap, workspace, show_result,
                         occupancy, loss_augmented_maps, loss_augmented_occupancy,
-                        starts, targets, paths, optimal_paths,
+                        weights=None, centers=None,
+                        starts=None, targets=None, paths=None, optimal_paths=None,
                         title=None, directory=None):
     """
     """
@@ -238,6 +239,8 @@ def show_occupancy_maps(costmaps, original_costmap, workspace, show_result,
         viewer.draw_ws_img(costmaps[i - 1], interpolate="none")
         viewer._ax.set_title('learned costmap: \n {}.'.format(i),
                              size=32 / cols)
+        if weights is not None and centers is not None:
+            show_weights(viewer, weights[i - 1], centers)
         viewer.set_drawing_axis(i * cols + 1)
         viewer.remove_axis()
         viewer.draw_ws_img(loss_augmented_maps[i - 1], interpolate="none")
@@ -252,6 +255,8 @@ def show_occupancy_maps(costmaps, original_costmap, workspace, show_result,
                                       viewer)
         if optimal_paths is not None:
             show_optimal_paths(optimal_paths[i - 1], pixel_map, viewer)
+        if weights is not None and centers is not None:
+            show_weights(viewer, weights[i - 1], centers)
         viewer.set_drawing_axis(i * cols + 3)
         viewer.remove_axis()
         viewer.draw_ws_img(loss_augmented_occupancy[i - 1], interpolate="none")
