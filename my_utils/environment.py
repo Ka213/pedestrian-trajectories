@@ -34,7 +34,8 @@ def get_costmap(phi, w):
     return costmap
 
 
-def create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace):
+def create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace,
+                    starts=None, targets=None):
     """ Returns a random environment """
     # Create costmap with rbfs
     w = np.random.random(nb_rbfs ** 2)
@@ -43,12 +44,14 @@ def create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace):
     costmap = get_costmap(phi, w)
 
     # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples, costmap, workspace)
+    starts, targets, paths = plan_paths(nb_samples, costmap, workspace,
+                                        starts=starts, targets=targets)
 
     return w, costmap, starts, targets, paths, centers
 
 
-def create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples, workspace):
+def create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples, workspace,
+                            starts=None, targets=None):
     """ Returns a random environment """
     # Create costmap with rbfs
     # w = [0.5488135, 0.71518937, 0.60276338, 0.54488318, 0.4236548, 0.64589411,
@@ -64,7 +67,8 @@ def create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples, workspace):
     costmap = get_costmap(phi, w)
 
     # Plan example trajectories
-    starts, targets, paths = plan_paths(nb_samples, costmap, workspace)
+    starts, targets, paths = plan_paths(nb_samples, costmap, workspace,
+                                        starts=starts, targets=targets)
 
     return w, costmap, starts, targets, paths, centers
 
