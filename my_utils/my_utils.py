@@ -35,8 +35,8 @@ def get_empirical_feature_count(sample_trajectories, Phi):
     return f
 
 
-def get_expected_edge_frequency(costmap, N, nb_points, terminal_states, paths,
-                                workspace):
+def get_expected_edge_frequency(costmap, N, nb_points, initial_states,
+                                terminal_states, workspace):
     """ Return the expected state visitation frequency """
     transition_probability = \
         get_transition_probabilities(costmap)
@@ -45,11 +45,13 @@ def get_expected_edge_frequency(costmap, N, nb_points, terminal_states, paths,
     graph = converter.convert()
 
     terminal = []
+    initials = []
     pixel_map = workspace.pixel_map(nb_points)
-    for t in terminal_states:
+    for s, t in zip(initial_states, terminal_states):
         t = pixel_map.world_to_grid(t)
+        s = pixel_map.world_to_grid(s)
         terminal.append(converter.graph_id(t[0], t[1]))
-
+        initials.append(converter.graph_id(s[0], s[1]))
     # Backward pass
     Z_s = np.zeros((nb_points ** 2))
     Z_s[terminal] = 1
@@ -59,20 +61,14 @@ def get_expected_edge_frequency(costmap, N, nb_points, terminal_states, paths,
             for i in range(N):
                 Z_a = np.multiply(np.dot(transition_probability, Z_s.T).
                                   reshape(nb_points ** 2, 8), np.tile(np.exp(
-                    -costmap.reshape(nb_points ** 2)), (8, 1)).T)
+                    costmap.reshape(nb_points ** 2)), (8, 1)).T)  # TODO add minus?
                 Z_s = np.sum(Z_a, axis=1)
             # Local Action Probability Computation
             P = Z_a / np.tile(Z_s, (8, 1)).T
             # Forward Pass
             D = np.zeros((nb_points ** 2, N + 1))
             # Initial state probabilities
-            l = 0
-            for path in paths:
-                for point in path:
-                    x = converter.graph_id(point[0], point[1])
-                    l += 1
-                    D[x, 0] = 1
-            D[:, 0] = D[:, 0] / l
+            D[initials, 0] = 1 / len(initials)
             for t in range(0, N):
                 D[:, t + 1] = np.sum(P * np.dot(transition_probability, D[:, t]).
                                      reshape(nb_points ** 2, 8), axis=1)
@@ -175,8 +171,8 @@ def scaled_hamming_loss_map(trajectory, nb_points,
 
 def hamming_loss_map(trajectory, nb_points):
     """ Create a map from a given trajectory with the hamming loss
-        with 0 in all states of the given trajectory
-        and 1 everywhere else
+        with 1 in all states of the given trajectory
+        and 0 everywhere else
     """
     occpancy_map = np.zeros((nb_points, nb_points))
     x_1 = np.asarray(trajectory)[:, 0]
@@ -202,7 +198,9 @@ def get_overall_loss(learned_maps, original_costmaps):
     """ Return the difference between the costsmaps """
     loss = np.zeros(len(learned_maps))
     for i, (map, costmap) in enumerate(zip(learned_maps, original_costmaps)):
+        map = map - np.min(map)
         map = map / np.sum(map)
+        costmap = costmap - np.min(costmap)
         costmap = costmap / np.sum(costmap)
         loss[i] = np.sum(np.abs(map - costmap))
     return loss
