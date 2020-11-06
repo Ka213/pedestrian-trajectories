@@ -27,17 +27,25 @@ phi = get_phi(nb_points, centers, sigma, Workspace())
 map = np.zeros((nb_points, nb_points))
 if algorithm == 'learch':
     map = get_costmap(phi, np.exp(np.ones((nb_rbfs ** 2))))
-    map, op = get_learch_input(map, paths, starts, targets, loss_stddev,
-                               loss_scalar)
+    map, op = get_learch_target(map, paths, starts, targets, loss_stddev,
+                                loss_scalar)
 elif algorithm == 'maxEnt':
-    map = get_maxEnt_input(map, N, paths, targets, phi)
+    map = get_maxEnt_target(map, N, paths, starts, targets, phi)
 elif algorithm == 'occ':
-    map = get_occ_input(map, N, paths, targets)
+    map = get_esf_target(map, N, paths, starts, targets)
 elif algorithm == 'loss_aug_occ':
-    map = get_loss_aug_occ_input(map, paths, targets, loss_scalar,
-                                 loss_stddev, N)
+    map = get_loss_aug_est_target(map, paths, starts, targets, loss_scalar,
+                                  loss_stddev, N)
 elif algorithm == 'occ_learch':
-    map = get_avg_learch_occ_input()
+    map = get_avg_learch_esf_target()
+elif algorithm == 'test':
+    map = original_costmap
+elif algorithm == 'test_exp':
+    map = get_costmap(phi, np.exp(w))
+
+occupancy = original_costmap < 0.6
+
+one_map = get_costmap(phi, np.ones(nb_rbfs ** 2))
 
 # Output costmap
 # startmap = get_costmap(phi, np.exp(np.ones(nb_rbfs ** 2)))

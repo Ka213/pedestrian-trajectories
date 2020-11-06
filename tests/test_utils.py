@@ -69,8 +69,8 @@ def test_expected_edge_frequency():
                         workspace)
     Phi = get_phi(nb_points, centers, sigma, workspace)
 
-    D = get_expected_edge_frequency(original_costmap, N, nb_points, targets,
-                                    paths, workspace)
+    D = get_expected_edge_frequency(original_costmap, N, nb_points, starts,
+                                    targets, workspace)
     D = - D - np.min(-D)
     f = np.tensordot(Phi, D)
 
