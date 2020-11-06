@@ -5,7 +5,7 @@ from my_utils.environment import *
 from my_learning.irl import *
 
 
-class New_Avg_Occ_OptPath(Learning):
+class Learch_Avg_Esf_Path(Learning):
     """ Implements the combined learning of the algorithms
         LEARCH and maximum Entropy
     """
@@ -26,7 +26,7 @@ class New_Avg_Occ_OptPath(Learning):
     def add_environment(self, centers, paths, starts, targets):
         """ Add an new environment to the LEARCH computation """
         phi = get_phi(self.nb_points, centers, self.sigma, self.workspace)
-        C = New_Avg_Occ_OptPath.Instance(phi, paths, starts, targets, self.workspace,
+        C = Learch_Avg_Esf_Path.Instance(phi, paths, starts, targets, self.workspace,
                                          self._l_max)
         self.instances.append(C)
 

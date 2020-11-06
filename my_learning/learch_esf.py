@@ -1,14 +1,13 @@
 import common_import
 
 from my_utils.my_utils import *
+from my_utils.environment import *
 from my_learning.irl import *
-import tensorflow as tf
-from pyrieef.learning.tf_networks import *
 
 
-class New_Loss_Aug_Occ(Learning):
-    """ Implements an algorithm which learns multiple costmaps
-        from demonstrations and the loss augmented expected state frequency
+class Learch_Esf(Learning):
+    """ Implements the combined learning of the algorithms
+        LEARCH and maximum Entropy
     """
 
     def __init__(self, nb_points, nb_rbfs, sigma, workspace):
@@ -18,14 +17,14 @@ class New_Loss_Aug_Occ(Learning):
         self._learning_rate = 1
         self._stepsize_scalar = 1
 
-        self.convergence = 0.1  # 0.01
+        self.convergence = 0.1
 
         self.w = np.exp(np.ones(nb_rbfs ** 2))
 
     def add_environment(self, centers, paths, starts, targets):
         """ Add an new environment to the LEARCH computation """
         phi = get_phi(self.nb_points, centers, self.sigma, self.workspace)
-        C = New_Loss_Aug_Occ.Instance(phi, paths, starts, targets, self.workspace)
+        C = Learch_Esf.Instance(phi, paths, starts, targets, self.workspace)
         self.instances.append(C)
 
     def get_regularization(self):
@@ -39,7 +38,7 @@ class New_Loss_Aug_Occ(Learning):
         return l2, l_proximal
 
     def n_steps(self, n, begin=0):
-        """ Do n steps of the algorithm over multiple environments """
+        """ Do n steps of the new algorithm over multiple environments """
         for step in range(begin, begin + n):
             print("step :", step)
             w_t = np.zeros(self.nb_rbfs ** 2)
@@ -70,7 +69,7 @@ class New_Loss_Aug_Occ(Learning):
         return costmaps, optimal_paths, np.log(self.w), step
 
     def solve(self, begin=0):
-        """ Compute the algorithm over multiple environments
+        """ Compute the new algorithm over multiple environments
             until the weights converge
         """
         step = begin
@@ -85,12 +84,11 @@ class New_Loss_Aug_Occ(Learning):
                 w = i.get_gradient()
                 w_t += w
             w_t = w_t / len(self.instances)
-            # print(w_t.sum())
+            print(w_t.sum())
             w_t = w_t / w_t.sum()
             # Exponentiated gradient descent
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) * w_t)
-            print(self.w)
             print("step size: ", get_stepsize(step, self._learning_rate,
                                               self._stepsize_scalar))
             e = np.amax(np.abs(self.w - w_old))
@@ -114,41 +112,22 @@ class New_Loss_Aug_Occ(Learning):
         return costmaps, optimal_paths, np.log(self.w), step
 
     class Instance(Learning.Instance):
-        """ Implements the algorithm for one environment """
+        """ Implements the new algorithm for one environment """
 
         def __init__(self, phi, paths, starts, targets, workspace):
             Learning.Instance.__init__(self, phi, paths, starts, targets,
                                        workspace)
-
-            # Parameters to compute the loss map
-            self._loss_scalar = 1 / len(paths)
-            self._loss_stddev = 3  # 10
             # Regularization parameters for the linear regression
             self._l2_regularizer = 1
             self._proximal_regularizer = 0
 
-            self._N = 20  # 100
+            self._N = 150
 
-            self.loss_map = np.zeros((len(paths), phi.shape[1], phi.shape[2]))
+            self.transition_probability = \
+                get_transition_probabilities(self.costmap)
 
             self.weights = []
-            self.loss_agumented_maps = []
-            self.loss_augmented_occupancy = []
-            self.occupancy = []
 
-            self.create_loss_maps()
-
-            self.network = ConvDeconvResize()
-            self.tf_x = self.network.placeholder()
-            self.decoded = self.network.define(self.tf_x)
-            self.saver = tf.train.Saver()
-
-        def create_loss_maps(self):
-            """ Create the loss maps for each sample trajectory """
-            self.loss_map = np.zeros(self.costmap.shape)
-            for i, t in enumerate(self.sample_trajectories):
-                self.loss_map += scaled_hamming_loss_map(
-                    t, self.phi.shape[1], self._loss_scalar, self._loss_stddev)
 
         def planning(self):
             """ Compute the optimal path for each start and
@@ -156,20 +135,19 @@ class New_Loss_Aug_Occ(Learning):
                 Add the states to the set d where the cost function has to
                 increase/decrease
             """
-            map = self.costmap - self.loss_map
-            self.loss_agumented_maps.append(map)
-            map = map - map.min()
+
             try:
-                o = get_expected_edge_frequency(self.costmap, self._N, self.phi.shape[1], self.sample_targets,
-                                                self.sample_trajectories, self.workspace)
-                self.occupancy.append(o)
-                o = get_expected_edge_frequency(map, self._N, self.phi.shape[1], self.sample_targets,
-                                                self.sample_trajectories, self.workspace)
-                self.loss_augmented_occupancy.append(o)
+                o = get_expected_edge_frequency(self.costmap, self._N,
+                                                self.phi.shape[1],
+                                                self.sample_targets,
+                                                self.sample_trajectories,
+                                                self.workspace)
             except Exception:
                 raise
 
-            # Add the states of with their expected state frequency to d
+            # Add the states of the optimal trajectory to d
+            # The costs should be increased in the states
+            # of the optimal trajectory
             X = np.arange(self.phi.shape[1])
             Y = np.arange(self.phi.shape[2])
             x1, x2 = np.meshgrid(X, Y)
@@ -182,15 +160,15 @@ class New_Loss_Aug_Occ(Learning):
                 # of the example trajectory
                 x1 = np.asarray(np.transpose(trajectory)[:][0])
                 x2 = np.asarray(np.transpose(trajectory)[:][1])
-                d = np.vstack((x1, x2, - np.ones(x1.shape)))
-                d3 = np.hstack((d3, d))
+                d_ = np.vstack((x1, x2, - np.ones(x1.shape)))
+                d3 = np.hstack((d3, d_))
 
-            d1[2] = d1[2] / d1[2].sum() * - d3[2].sum()
+            d1[2] = d1[2] / d1[2].sum() * -d3[2].sum()
             d = np.hstack((d1, d3))
             return d
 
         def supervised_learning(self, d):
-            """ Train a regressor on d
+            """ Train a regressor on D
                 compute the hypothesis of the new weights with linear regression
             """
             c = d[:][2]
@@ -201,12 +179,11 @@ class New_Loss_Aug_Occ(Learning):
             w_new = linear_regression(phi, c, self.w,
                                       self._l2_regularizer,
                                       self._proximal_regularizer)
-
             self.weights.append(w_new)
             return w_new
 
         def get_gradient(self):
-            """ Compute one step of the algorithm """
+            """ Compute one step of the new algorithm """
             d = self.planning()
             w_new = self.supervised_learning(d)
             return w_new

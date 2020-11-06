@@ -17,25 +17,11 @@ class Random(Learning):
         """ Returns a random vector as weights """
         # compute the learned costmaps and their optimal paths
         # for the weight w
-        costmaps = []
-        optimal_paths = []
-        for _, i in enumerate(self.instances):
-            costmap = get_costmap(i.phi, self.w)
-            costmaps.append(costmap)
-            i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
-                                     self.workspace, starts=i.sample_starts,
-                                     targets=i.sample_targets)
-            optimal_paths.append(paths)
-            i.optimal_paths.append(paths)
+        costmaps, optimal_paths, self.w, n = self.solve()
         return costmaps, optimal_paths, self.w, n
 
     def solve(self, begin=0):
         """ Returns a random vector as weights """
-        # for _, i in enumerate(self.instances):
-        #    i.update(self.w)
-
         # compute the learned costmaps and their optimal paths
         # for the weight w
         costmaps = []

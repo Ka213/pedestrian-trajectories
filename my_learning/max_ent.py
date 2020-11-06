@@ -12,12 +12,13 @@ class MaxEnt(Learning):
         Learning.__init__(self, nb_points, nb_rbfs, sigma, workspace)
 
         # Parameters to compute the step size
-        self._learning_rate = 0.114
-        self._stepsize_scalar = 20
+        self._learning_rate = 1
+        self._stepsize_scalar = 1
 
-        self.convergence = 0.01
+        self.convergence = 0.1
 
-        self.w = np.exp(np.zeros(nb_rbfs ** 2))
+        self.weights = []
+        self.w = np.zeros(nb_rbfs ** 2)
 
     def add_environment(self, centers, paths, starts, targets):
         """ Add an new environment to the maxEnt computation """
@@ -27,65 +28,8 @@ class MaxEnt(Learning):
 
     def n_steps(self, n, begin=0):
         """ Do n steps of the maxEnt algorithm over multiple environments
-            using exponentiated gradient descent
-        """
-        for step in range(begin, begin + n):
-            print("step :", step)
-            g = np.zeros(self.nb_rbfs ** 2)
-            for j, i in enumerate(self.instances):
-                i.update(np.log(self.w))
-                gradient = i.get_gradient()
-                g += gradient
-            self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
-                                                  self._stepsize_scalar) * \
-                                     (g / len(self.instances)))
-            print("step size: ", np.exp(get_stepsize(step, self._learning_rate,
-                                                     self._stepsize_scalar)))
-        costmaps = []
-        optimal_paths = []
-        for _, i in enumerate(self.instances):
-            i.update(np.log(self.w))
-            costmaps.append(i.costmap)
-            optimal_paths.append(i.optimal_paths[-1])
-        return costmaps, optimal_paths, np.log(self.w), step
-
-    def solve(self, begin=0):
-        """ Compute the maxEnt over multiple environments
-            until the weights converge
-            using exponentiated gradient descent
-        """
-        step = begin
-        w_old = copy.deepcopy(self.w)
-        e = 10
-        while e > 0.1:
-            print("step :", step)
-            g = np.zeros(self.nb_rbfs ** 2)
-            for j, i in enumerate(self.instances):
-                i.update(np.log(self.w))
-                gradient = i.get_gradient()
-                g += gradient
-            self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
-                                                  self._stepsize_scalar) * \
-                                     (g / len(self.instances)))
-            print("step size: ", np.exp(get_stepsize(step, self._learning_rate,
-                                                     self._stepsize_scalar)))
-            e = np.amax(self.w - w_old).sum()
-            print("convergence: ", e)
-            w_old = copy.deepcopy(self.w)
-            step += 1
-        costmaps = []
-        optimal_paths = []
-        for _, i in enumerate(self.instances):
-            i.update(np.log(self.w))
-            costmaps.append(i.costmap)
-            optimal_paths.append(i.optimal_paths[-1])
-        return costmaps, optimal_paths, np.log(self.w), step
-
-    def n_steps_gd(self, n, begin=0):
-        """ Do n steps of the maxEnt algorithm over multiple environments
             using gradient descent
         """
-        self.w = np.log(self.w)
         for step in range(begin, begin + n):
             print("step :", step)
             g = np.zeros(self.nb_rbfs ** 2)
@@ -96,6 +40,7 @@ class MaxEnt(Learning):
             self.w = self.w + get_stepsize(step, self._learning_rate,
                                            self._stepsize_scalar) * \
                      (g / len(self.instances))
+            self.weights.append(self.w)
             # print("w ", self.w , self.w.sum())
             print("step size: ", get_stepsize(step, self._learning_rate,
                                               self._stepsize_scalar))
@@ -107,12 +52,11 @@ class MaxEnt(Learning):
             optimal_paths.append(i.optimal_paths[-1])
         return costmaps, optimal_paths, self.w, step
 
-    def solve_gd(self, begin=0):
+    def solve(self, begin=0):
         """ Compute the maxEnt over multiple environments
             until the weights converge
             using gradient descent
         """
-        self.w = np.log(self.w)
         step = begin
         w_old = copy.deepcopy(self.w)
         e = 10
@@ -148,13 +92,16 @@ class MaxEnt(Learning):
             Learning.Instance.__init__(self, phi, paths, starts, targets,
                                        workspace)
 
-            self._N = 185
+            self._N = 100
 
             self.w = np.zeros(phi.shape[0])
             self.transition_probability = \
                 get_transition_probabilities(self.costmap)
             self.f_empirical = get_empirical_feature_count \
                 (self.sample_trajectories, self.phi)
+            self.d = []
+            self.f_expected = []
+            self.f = []
 
         def update(self, w):
             """ Update the weights and the costmap """
@@ -174,16 +121,21 @@ class MaxEnt(Learning):
             f_empirical = self.f_empirical
             # Calculate the learners expected feature count
             try:
-                D = get_expected_edge_frequency(self.costmap, self._N,
+                d = get_expected_edge_frequency(self.costmap, self._N,
                                                 self.phi.shape[1],
+                                                self.sample_starts,
                                                 self.sample_targets,
-                                                self.sample_trajectories,
                                                 self.workspace)
+                self.d.append(d)
             except Exception:
                 raise
-            f_expected = np.tensordot(self.phi, D)
+            f_expected = np.tensordot(self.phi, d)
+            self.f_expected.append(get_costmap(self.phi, f_expected))
+            f_empirical = f_empirical / f_empirical.sum()
+            f_expected = f_expected / f_expected.sum()
             f = f_empirical - f_expected
             f = - f - np.min(- f)
+            self.f.append(get_costmap(self.phi, f))
             return f
 
 
