@@ -5,12 +5,14 @@ from my_utils.environment import *
 from pyrieef.geometry.workspace import *
 
 
-def get_learch_input(costmap, paths, starts, targets, loss_stddev, loss_scalar):
+def get_learch_target(costmap, paths, starts, targets, loss_stddev, loss_scalar):
     map = np.zeros(costmap.shape)
 
     # Push down on demonstrations
     for i, trajectory in enumerate(paths):
-        map -= hamming_loss_map(trajectory, costmap.shape[0])
+        x1 = np.asarray(trajectory)[:, 0]
+        x2 = np.asarray(trajectory)[:, 1]
+        map[x1, x2] += costmap[x1, x2] - 1
 
     # Push up on optimal path
     op = []
@@ -21,15 +23,18 @@ def get_learch_input(costmap, paths, starts, targets, loss_stddev, loss_scalar):
         _, _, trajectory = plan_paths(1, c, Workspace(),
                                       starts=[start],
                                       targets=[target])
-        op.append(trajectory[0])
-        map += hamming_loss_map(trajectory[0], costmap.shape[0])
+        trajectory = trajectory[0]
+        op.append(trajectory)
+        x1 = np.asarray(trajectory)[:, 0]
+        x2 = np.asarray(trajectory)[:, 1]
+        map[x1, x2] += costmap[x1, x2] + 1
     return map, op
 
 
-def get_maxEnt_input(costmap, N, paths, targets, phi):
-    try:  # TODO on log costmap?
-        D = get_expected_edge_frequency(costmap, N, costmap.shape[0], targets,
-                                        paths, Workspace())
+def get_maxEnt_target(costmap, N, paths, starts, targets, phi):
+    try:
+        D = get_expected_edge_frequency(costmap, N, costmap.shape[0], starts,
+                                        targets, Workspace())
     except Exception:
         raise
     f_expected = np.tensordot(phi, D)
@@ -40,10 +45,10 @@ def get_maxEnt_input(costmap, N, paths, targets, phi):
     return map
 
 
-def get_occ_input(costmap, N, paths, targets):
+def get_esf_target(costmap, N, paths, starts, targets):
     # Push up on state frequency
-    occ = get_expected_edge_frequency(costmap, N, costmap.shape[0], targets,
-                                      paths, Workspace())
+    occ = get_expected_edge_frequency(costmap, N, costmap.shape[0], starts,
+                                      targets, Workspace())
     # Push down on demonstrations
     map = np.zeros(costmap.shape)
     for i, trajectory in enumerate(paths):
@@ -54,7 +59,8 @@ def get_occ_input(costmap, N, paths, targets):
     return map
 
 
-def get_loss_aug_occ_input(costmap, paths, targets, loss_scalar, loss_stddev, N):
+def get_loss_aug_est_target(costmap, paths, starts, targets, loss_scalar,
+                            loss_stddev, N):
     loss_augmentation = np.zeros(costmap.shape)
     map = np.zeros(costmap.shape)
     # Push down on demonstrations
@@ -67,7 +73,7 @@ def get_loss_aug_occ_input(costmap, paths, targets, loss_scalar, loss_stddev, N)
                                                      loss_stddev)
     # Push up on loss augmented state frequency
     occ = get_expected_edge_frequency(costmap - loss_augmentation, N,
-                                      costmap.shape[0], targets, paths,
+                                      costmap.shape[0], starts, targets,
                                       Workspace())
     # Scaleing
     occ = occ / occ.sum() * - map.sum()
@@ -75,6 +81,6 @@ def get_loss_aug_occ_input(costmap, paths, targets, loss_scalar, loss_stddev, N)
     return map
 
 
-def get_avg_learch_occ_input():
+def get_avg_learch_esf_target():
     # TODO implement
     print("please implement")
