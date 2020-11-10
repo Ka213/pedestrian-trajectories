@@ -1,0 +1,237 @@
+test_sdf_data_x:
+  filename: test_sdf_data_x
+  workspaces: workspaces_test_sdf_data_x
+  trajectories: trajectories_test_sdf_data_x
+  endpoints: endpoints_test_sdf_data_x
+  type: hdf5
+  numdatasets: 100
+  nb_samples: 5
+  loss_stddev: 5
+  loss_scalar: 1
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+learch_sdf_data_10:
+  filename: learch_sdf_data_10
+  workspaces: workspaces_learch_sdf_data_10
+  trajectories: trajectories_learch_sdf_data_10
+  endpoints: endpoints_learch_sdf_data_10
+  type: hdf5
+  numdatasets: 1000
+  nb_samples: 10
+  loss_stddev: 5
+  loss_scalar: 1
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_100_10:
+  filename: sdf_data_100_10
+  workspaces: workspaces_sdf_data_100_10
+  trajectories: trajectories_sdf_data_100_10
+  endpoints: endpoints_sdf_data_100_10
+  type: hdf5
+  numdatasets: 100
+  nb_samples: 10
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_100_20:
+  filename: sdf_data_100_20
+  workspaces: workspaces_sdf_data_100_20
+  trajectories: trajectories_sdf_data_100_20
+  endpoints: endpoints_sdf_data_100_20
+  type: hdf5
+  numdatasets: 100
+  nb_samples: 20
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_100_5:
+  filename: sdf_data_100_5
+  workspaces: workspaces_sdf_data_100_5
+  trajectories: trajectories_sdf_data_100_5
+  endpoints: endpoints_sdf_data_100_5
+  type: hdf5
+  numdatasets: 100
+  nb_samples: 5
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_250_20:
+  filename: sdf_data_250_20
+  workspaces: workspaces_sdf_data_250_20
+  trajectories: trajectories_sdf_data_250_20
+  endpoints: endpoints_sdf_data_250_20
+  type: hdf5
+  numdatasets: 250
+  nb_samples: 20
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_250_10:
+  filename: sdf_data_250_10
+  workspaces: workspaces_sdf_data_250_10
+  trajectories: trajectories_sdf_data_250_10
+  endpoints: endpoints_sdf_data_250_10
+  type: hdf5
+  numdatasets: 250
+  nb_samples: 10
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_500_5:
+  filename: sdf_data_500_5
+  workspaces: workspaces_sdf_data_500_5
+  trajectories: trajectories_sdf_data_500_5
+  endpoints: endpoints_sdf_data_500_5
+  type: hdf5
+  numdatasets: 500
+  nb_samples: 5
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_500_10:
+  filename: sdf_data_500_10
+  workspaces: workspaces_sdf_data_500_10
+  trajectories: trajectories_sdf_data_500_10
+  endpoints: endpoints_sdf_data_500_10
+  type: hdf5
+  numdatasets: 500
+  nb_samples: 10
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_10_10:
+  filename: sdf_data_10_10
+  workspaces: workspaces_sdf_data_10_10
+  trajectories: trajectories_sdf_data_10_10
+  endpoints: endpoints_sdf_data_10_10
+  type: hdf5
+  numdatasets: 10
+  nb_samples: 10
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_500_20:
+  filename: sdf_data_500_20
+  workspaces: workspaces_sdf_data_500_20
+  trajectories: trajectories_sdf_data_500_20
+  endpoints: endpoints_sdf_data_500_20
+  type: hdf5
+  numdatasets: 500
+  nb_samples: 20
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_1000_10:
+  filename: sdf_data_1000_10
+  workspaces: workspaces_sdf_data_1000_10
+  trajectories: trajectories_sdf_data_1000_10
+  endpoints: endpoints_sdf_data_1000_10
+  type: hdf5
+  numdatasets: 1000
+  nb_samples: 10
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
+
+sdf_data_1000_20:
+  filename: sdf_data_1000_20
+  workspaces: workspaces_sdf_data_1000_20
+  trajectories: trajectories_sdf_data_1000_20
+  endpoints: endpoints_sdf_data_1000_20
+  type: hdf5
+  numdatasets: 1000
+  nb_samples: 20
+  seed: 0
+  sigma: 0.15
+  xsize: 28
+  ysize: 28
+  maxnumobjs: 3
+  minobjrad: 0.05
+  maxobjrad: 0.3
+  epsilon: 0.1
+  display: False
