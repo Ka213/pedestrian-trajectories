@@ -300,8 +300,6 @@ def show_predictions(costmap, original_costmap, workspace, show_result,
         viewer.set_drawing_axis(i)
         if i < len(optimal_paths) + cols:
             viewer.draw_ws_img(costmap, interpolate="none")
-            viewer._ax.set_title('Learned Costmap: \n {}.'.format(i + 1 - cols),
-                                 size=32 / cols)
 
             if paths is not None:
                 show_example_trajectories([paths[i - cols]], pixel_map,
@@ -318,7 +316,7 @@ def show_predictions(costmap, original_costmap, workspace, show_result,
     if show_result == 'SHOW':
         viewer.show_once()
     elif show_result == 'SAVE':
-        viewer.save_figure(directory)
+        viewer.save_figure(directory + '.pdf')
 
 
 def show_3D(costmap, workspace, show_result, starts=None, targets=None,

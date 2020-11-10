@@ -128,7 +128,8 @@ def add_subplot_plot(ax, x, y, name):
 
 
 def compare_learning(directories, directory, names=None, title=None,
-                     single=False):
+                     single=False, x_label='# of demonstrations used per '
+                                           'environment'):
     """ plot results different predictions into the same graph """
     l_x = []
     l_test_nll = []
@@ -191,7 +192,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[0]
     add_subplot_plot(ax, l_x, l_training_loss_l, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('Learch training loss')
     ax.legend(loc="lower right")
     ax.set_title("Learch training loss")
@@ -199,7 +200,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[1]
     add_subplot_plot(ax, l_x, l_test_loss_l, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('Learch test loss')
     ax.legend(loc="lower right")
     ax.set_title("Learch test loss")
@@ -207,7 +208,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[2]
     add_subplot_plot(ax, l_x, l_training_loss_m, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('maximum entropy training loss')
     ax.legend(loc="upper right")
     ax.set_title("maximum entropy training loss")
@@ -215,7 +216,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[3]
     add_subplot_plot(ax, l_x, l_test_loss_m, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('maximum entropy test loss')
     ax.legend(loc="upper right")
     ax.set_title("maximum entropy test loss")
@@ -223,7 +224,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[4]
     add_subplot_plot(ax, l_x, l_training_edt, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('training euclidean distance transform')
     ax.legend(loc="upper right")
     ax.set_title("training euclidean distance transform")
@@ -231,7 +232,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[5]
     add_subplot_plot(ax, l_x, l_test_edt, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('test euclidean distance transform')
     ax.legend(loc="upper right")
     ax.set_title("test euclidean distance transform")
@@ -239,7 +240,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[6]
     add_subplot_plot(ax, l_x, l_training_nll, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('training negative log likelihood')
     ax.legend(loc="upper right")
     ax.set_title("training NLL")
@@ -247,7 +248,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[7]
     add_subplot_plot(ax, l_x, l_test_nll, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('test negative log likelihood')
     ax.legend(loc="upper right")
     ax.set_title("test NLL")
@@ -255,7 +256,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[8]
     add_subplot_plot(ax, l_x, l_training_costs, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('value difference of the costmaps')
     ax.legend(loc="upper right")
     ax.set_title("training costmap difference")
@@ -263,7 +264,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[9]
     add_subplot_plot(ax, l_x, l_test_costs, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('value difference of the costmaps')
     ax.legend(loc="upper right")
     ax.set_title("test costmap difference")
@@ -271,7 +272,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[10]
     add_subplot_plot(ax, l_x, l_learning_time, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('learning time in sec')
     ax.legend(loc="upper right")
     ax.set_title("learning time")
@@ -279,7 +280,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[11]
     add_subplot_plot(ax, l_x, l_prediction_time, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('inference time in sec')
     ax.legend(loc="upper right")
     ax.set_title("inference time")
@@ -287,7 +288,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
     ax = axes[12]
     add_subplot_plot(ax, l_x, l_nb_steps, l_name)
-    ax.set_xlabel('# of demonstrations used per environment')
+    ax.set_xlabel(x_label)
     ax.set_ylabel('iteration steps')
     ax.legend(loc="upper right")
     ax.set_title("iteration steps")

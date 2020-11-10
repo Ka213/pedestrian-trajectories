@@ -1,4 +1,4 @@
-import common_import
+from common_import import *
 
 import time
 from scipy.interpolate import Rbf
@@ -78,7 +78,8 @@ def plan_paths(nb_samples, costmap, workspace, starts=None, targets=None,
     """ Plan example trajectories
         either with random or fixed start and target state
     """
-    #costmap += 1 # if the costmap only has zeros
+    # make costmap positive
+    costmap += 0.1 - np.min(costmap)
     converter = CostmapToSparseGraph(costmap, average_cost)
     converter.integral_cost = True
     graph = converter.convert()

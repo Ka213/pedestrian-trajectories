@@ -23,13 +23,13 @@ def get_edt(optimal_trajectory, sample_trajectory, nb_points):
     return np.sum(distance[x_1, x_2])
 
 
-def get_empirical_feature_count(sample_trajectories, Phi):
+def get_empirical_feature_count(sample_trajectories, phi):
     """ Return the expected empirical feature counts """
-    f = np.zeros(Phi.shape[0])
+    f = np.zeros(phi.shape[0])
     for i, trajectory in enumerate(sample_trajectories):
         x_1 = np.asarray(trajectory)[:, 0]
         x_2 = np.asarray(trajectory)[:, 1]
-        f += np.sum(Phi[:, x_1.astype(int), x_2.astype(int)],
+        f += np.sum(phi[:, x_1.astype(int), x_2.astype(int)],
                     axis=1)
     f = f / len(sample_trajectories)
     return f
@@ -199,7 +199,8 @@ def get_overall_loss(learned_maps, original_costmaps):
     loss = np.zeros(len(learned_maps))
     for i, (map, costmap) in enumerate(zip(learned_maps, original_costmaps)):
         map = map - np.min(map)
-        map = map / np.sum(map)
+        if np.sum(map) != 0:
+            map = map / np.sum(map)
         costmap = costmap - np.min(costmap)
         costmap = costmap / np.sum(costmap)
         loss[i] = np.sum(np.abs(map - costmap))

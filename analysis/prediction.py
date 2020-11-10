@@ -10,7 +10,6 @@ from my_learning.learch_esf import *
 from my_learning.learch_avg_esf_path import *
 from my_learning.only_push_down import *
 from my_learning.random import *
-from my_learning.nn_learning import *
 from my_learning.irl import *
 from my_learning.average import *
 from my_utils.output_costmap import *
@@ -45,14 +44,6 @@ def parallel_task(learning, nb_train, nb_test, range_training_env,
         l = Random(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'onlyPushDown':
         l = OnlyPushDown(nb_points, nb_rbfs, sigma, workspace)
-    if learning == 'nn_learch':
-        l = NN_Learch(nb_points, nb_rbfs, sigma, workspace)
-    elif learning == 'nn_maxEnt':
-        l = NN_MaxEnt(nb_points, nb_rbfs, sigma, workspace)
-    elif learning == 'nn_occ':
-        l = NN_Occ(nb_points, nb_rbfs, sigma, workspace)
-    elif learning == 'nn_loss_aug_occ':
-        l = NN_Loss_Aug_Occ(nb_points, nb_rbfs, sigma, workspace)
 
     original_costmaps = []
     original_starts = []
@@ -114,7 +105,7 @@ def parallel_task(learning, nb_train, nb_test, range_training_env,
         p_starts.append(s[- nb_test:])
         p_targets.append(t[- nb_test:])
         p_paths.append(p[- nb_test:])
-        _, _, p = plan_paths(nb_test, costmap - np.min(costmap), workspace,
+        _, _, p = plan_paths(nb_test, costmap, workspace,
                              starts=p_starts[-1], targets=p_targets[-1])
         predictions.append(p)
     prediction_time = time.time() - prediction_time_0
@@ -152,9 +143,9 @@ if __name__ == "__main__":
     range_test_env = np.arange(5, 10)
     nb_train = 20
     nb_test = 20
-    foldername = '{}_{}env_{}-{}samples_{}predictions' \
+    foldername = '{}_{}env_{}-{}samples_{}predictions_{}' \
         .format(learning, len(range_training_env), nb_samples_l, nb_samples_u,
-                nb_test)
+                nb_test, range_training_env)
     workspace = Workspace()
     directory = home + '/../results/prediction/' + foldername
     Path(directory).mkdir(parents=True, exist_ok=True)
