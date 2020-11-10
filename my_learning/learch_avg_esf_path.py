@@ -19,7 +19,7 @@ class Learch_Avg_Esf_Path(Learning):
 
         self._l_max = 0.5
 
-        self.convergence = 0.1
+        self.convergence = 0.1  # 0.01
 
         self.w = np.exp(np.ones(nb_rbfs ** 2))
 
@@ -63,8 +63,7 @@ class Learch_Avg_Esf_Path(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -106,8 +105,7 @@ class Learch_Avg_Esf_Path(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -155,9 +153,7 @@ class Learch_Avg_Esf_Path(Learning):
             optimal_paths = []
             for i, (s, t) in enumerate(zip(self.sample_starts,
                                            self.sample_targets)):
-                map = self.costmap - self.loss_map[i] - \
-                      np.ones(self.costmap.shape) * \
-                      np.amin(self.costmap - self.loss_map[i])
+                map = self.costmap - self.loss_map[i]
                 _, _, paths = plan_paths(1, map, self.workspace, starts=[s],
                                          targets=[t])
                 optimal_paths.append(paths[0])
@@ -165,8 +161,8 @@ class Learch_Avg_Esf_Path(Learning):
             try:
                 o = get_expected_edge_frequency(self.costmap, self._N,
                                                 self.phi.shape[1],
+                                                self.sample_starts,
                                                 self.sample_targets,
-                                                self.sample_trajectories,
                                                 self.workspace)
             except Exception:
                 raise

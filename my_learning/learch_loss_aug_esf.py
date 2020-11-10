@@ -2,8 +2,6 @@ import common_import
 
 from my_utils.my_utils import *
 from my_learning.irl import *
-import tensorflow as tf
-from pyrieef.learning.tf_networks import *
 
 class Learch_Loss_Aug_Esf(Learning):
     """ Implements an algorithm which learns multiple costmaps
@@ -46,7 +44,7 @@ class Learch_Loss_Aug_Esf(Learning):
                 i.update(self.w)
                 w = i.get_gradient()
                 w_t += w
-            w_t = w_t / w_t.sum()
+            # w_t = w_t / w_t.sum()
             # Gradient descent rule
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) * w_t)
@@ -60,8 +58,7 @@ class Learch_Loss_Aug_Esf(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -85,7 +82,7 @@ class Learch_Loss_Aug_Esf(Learning):
                 w_t += w
             w_t = w_t / len(self.instances)
             # print(w_t.sum())
-            w_t = w_t / w_t.sum()
+            # w_t = w_t / w_t.sum()
             # Exponentiated gradient descent
             self.w = self.w * np.exp(get_stepsize(step, self._learning_rate,
                                                   self._stepsize_scalar) * w_t)
@@ -104,8 +101,7 @@ class Learch_Loss_Aug_Esf(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -120,13 +116,13 @@ class Learch_Loss_Aug_Esf(Learning):
                                        workspace)
 
             # Parameters to compute the loss map
-            self._loss_scalar = 1 / len(paths)
-            self._loss_stddev = 3  # 10
+            self._loss_scalar = 1
+            self._loss_stddev = 10
             # Regularization parameters for the linear regression
             self._l2_regularizer = 1
             self._proximal_regularizer = 0
 
-            self._N = 20  # 100
+            self._N = 35
 
             self.loss_map = np.zeros((len(paths), phi.shape[1], phi.shape[2]))
 
@@ -136,11 +132,6 @@ class Learch_Loss_Aug_Esf(Learning):
             self.occupancy = []
 
             self.create_loss_maps()
-
-            self.network = ConvDeconvResize()
-            self.tf_x = self.network.placeholder()
-            self.decoded = self.network.define(self.tf_x)
-            self.saver = tf.train.Saver()
 
         def create_loss_maps(self):
             """ Create the loss maps for each sample trajectory """

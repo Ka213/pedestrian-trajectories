@@ -60,8 +60,7 @@ class Learch_Esf(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -103,8 +102,7 @@ class Learch_Esf(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -139,8 +137,8 @@ class Learch_Esf(Learning):
             try:
                 o = get_expected_edge_frequency(self.costmap, self._N,
                                                 self.phi.shape[1],
+                                                self.sample_starts,
                                                 self.sample_targets,
-                                                self.sample_trajectories,
                                                 self.workspace)
             except Exception:
                 raise

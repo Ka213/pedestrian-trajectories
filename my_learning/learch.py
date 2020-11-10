@@ -57,8 +57,7 @@ class Learch2D(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -99,8 +98,7 @@ class Learch2D(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -145,9 +143,7 @@ class Learch2D(Learning):
             optimal_paths = []
             for i, (s, t) in enumerate(zip(self.sample_starts,
                                            self.sample_targets)):
-                map = self.costmap - self.loss_map[i] - \
-                      np.ones(self.costmap.shape) * \
-                      np.amin(self.costmap - self.loss_map[i])
+                map = self.costmap - self.loss_map[i]
                 _, _, paths = plan_paths(1, map, self.workspace, starts=[s],
                                          targets=[t])
                 optimal_paths.append(paths[0])

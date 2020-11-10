@@ -61,8 +61,7 @@ class OnlyPushDown(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)
@@ -104,8 +103,7 @@ class OnlyPushDown(Learning):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
             i.learned_maps.append(costmap)
-            map = costmap - np.amin(costmap)
-            _, _, paths = plan_paths(len(i.sample_trajectories), map,
+            _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
             optimal_paths.append(paths)

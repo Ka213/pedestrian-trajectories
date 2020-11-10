@@ -109,8 +109,8 @@ class MaxEnt(Learning):
             map = get_costmap(self.phi, self.w)
             self.costmap = map
             self.learned_maps.append(map)
-            map = self.costmap - np.amin(self.costmap)
-            _, _, op = plan_paths(len(self.sample_trajectories), map,
+            # show(map, self.workspace, 'SHOW')
+            _, _, op = plan_paths(len(self.sample_trajectories), self.costmap,
                                   self.workspace, self.sample_starts,
                                   self.sample_targets)
             self.optimal_paths.append(op)
