@@ -3,22 +3,22 @@ import common_import
 from my_utils.my_utils import *
 import tensorflow as tf
 from pyrieef.learning.tf_networks import *
-from nn.my_random_environment import *
-from nn.my_dataset import *
+from nn.random_environment_sdf import *
+from nn.dataset_sdf import *
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
 
-class NN_Learch():
+class Deep_Learning():
     """
     """
 
-    def __init__(self, nb_points, nb_rbfs, sigma, data, workspace):
+    def __init__(self, data, learning, workspace):
         self.DRAW = True
         self.SAVE_TO_FILE = False
 
         self.workspace = workspace
-        self.nb_points = nb_points
-        self.nb_rbfs = nb_rbfs
-        self.sigma = sigma
+        self.learning = learning
 
         # Parameters to compute the step size
         self._learning_rate = 1
@@ -26,11 +26,15 @@ class NN_Learch():
 
         self.convergence = 0.1
 
-        self.BATCHES = 2000  # 8000
+        self._loss_scalar = 1
+        self._loss_stddev = 10
+        self._N = 35
+
+        self.BATCHES = 8000
         self.BATCH_SIZE = 64
         self.PIXELS = 28  # Used to be 100.
         self.LR = 0.002  # learning rate
-        self.NUM_TEST = 2
+        self.NUM_TEST = 0
         self.NUM_TRAIN = None
 
         self.network = ConvDeconvResize()
@@ -42,18 +46,13 @@ class NN_Learch():
         self.loss = tf.reduce_mean(tf.square(self.tf_y - self.decoded))
         self.train = tf.train.AdamOptimizer(self.LR).minimize(self.loss)
         self.saver = tf.train.Saver()
-        self.sess = tf.Session()  # config=tf.ConfigProto(log_device_placement=True))
+        self.sess = tf.Session()
         self.datafile = data
 
         self.test_view_data_inputs = None
         self.test_view_data_targets = None
         self.test_view_costs = None
         self.costs = None
-
-        self._loss_scalar = 1
-        self._loss_stddev = 5
-
-        self._N = 35  # 100
 
         self.decoded_data_train = []
         self.decoded_data_test = []
@@ -63,7 +62,6 @@ class NN_Learch():
 
     def initialize(self):
         tf.set_random_seed(1)
-        # tf.debugging.set_log_device_placement(True)
         # Costmaps
         self.costmaps = get_dataset_id(data_id=self.datafile)
         self.costmaps.normalize_maps()
@@ -75,7 +73,8 @@ class NN_Learch():
         self.workspaces = load_workspace_dataset(basename=self.datafile
                                                           + '.hdf5')
 
-        self.costs = [w.onemap for w in self.workspaces]  # np.exp(self.workspaces[:].onemap)
+        self.costs = np.ones((self.costmaps._max_index, self.PIXELS,
+                              self.PIXELS))
         self.costs = np.exp(np.array(self.costs))
         self.test_view_data_inputs = \
             self.costmaps.test_inputs[:self.NUM_TEST]
@@ -94,7 +93,6 @@ class NN_Learch():
                 a[i] = [None] * self.NUM_TEST
                 for j in range(self.NUM_TEST):
                     a[i][j] = fig.add_subplot(grid[i, j])
-            plt.ion()  # continuously plot
 
             for i in range(self.NUM_TEST):
                 # occupancy grid
@@ -110,22 +108,25 @@ class NN_Learch():
 
         for learch_step in range(begin, begin + n):
             print("learch step :", learch_step)
-            self.costmaps.update_targets(self.costs, self.workspaces)
+            self.costmaps.update_targets(self.costs, self.workspaces,
+                                         self.learning, self._loss_scalar,
+                                         self._loss_stddev, self._N)
             self.test_view_data_targets = \
                 self.costmaps.test_targets[:self.NUM_TEST]
-            for i in range(self.NUM_TEST):
-                # gradient
-                a[2][i].clear()
-                a[2][i].imshow(self.test_view_data_targets[i]
-                               .reshape(self.PIXELS, self.PIXELS), cmap=cm.magma)
-                a[2][i].set_xticks(())
-                a[2][i].set_yticks(())
-                # learned costs
-                a[4][i].clear()
-                a[4][i].imshow(np.log(self.costs[self.NUM_TRAIN + i]),
-                               cmap=cm.magma)
-                a[4][i].set_xticks(())
-                a[4][i].set_yticks(())
+            if self.DRAW or self.SAVE_TO_FILE:
+                for i in range(self.NUM_TEST):
+                    # gradient
+                    a[2][i].clear()
+                    a[2][i].imshow(self.test_view_data_targets[i]
+                                   .reshape(self.PIXELS, self.PIXELS), cmap=cm.magma)
+                    a[2][i].set_xticks(())
+                    a[2][i].set_yticks(())
+                    # learned costs
+                    a[4][i].clear()
+                    a[4][i].imshow(np.log(self.costs[self.NUM_TRAIN + i]),
+                                   cmap=cm.magma)
+                    a[4][i].set_xticks(())
+                    a[4][i].set_yticks(())
 
             self.sess.run(tf.global_variables_initializer())
             k = 0
@@ -171,15 +172,14 @@ class NN_Learch():
                         if self.DRAW:
                             plt.draw()
                             plt.pause(0.01)
-            plt.close(fig)
+            if self.DRAW or self.SAVE_TO_FILE:
+                plt.close(fig)
             # Update training costmaps
             decoded_data = self.sess.run(
                 self.decoded, {self.tf_x: self.network.resize_batch(
                     self.costmaps.train_inputs)})
             self.decoded_data_train.append(decoded_data)
-            print(np.sum(decoded_data) / len(self.costmaps.test_inputs))
-            print(np.min(decoded_data))
-            print(np.max(decoded_data))
+            # scale data
             v = ((np.max(decoded_data) - np.min(decoded_data)) / 2)
             decoded_data = (decoded_data - v)
             self.costs[:self.NUM_TRAIN] = self.costs[:self.NUM_TRAIN] \
@@ -187,8 +187,8 @@ class NN_Learch():
                                                                 self._learning_rate,
                                                                 self._stepsize_scalar)
                                                    * decoded_data.reshape((-1,
-                                                                           self.nb_points,
-                                                                           self.nb_points)))
+                                                                           self.PIXELS,
+                                                                           self.PIXELS)))
             # Update test costmaps
             decoded_data = self.sess.run(
                 self.decoded, {self.tf_x: self.network.resize_batch(
@@ -200,17 +200,11 @@ class NN_Learch():
                                                                 self._learning_rate,
                                                                 self._stepsize_scalar)
                                                    * decoded_data.reshape((-1,
-                                                                           self.nb_points,
-                                                                           self.nb_points)))
-            print(np.sum(self.costs) / len(self.costs))
-            print(np.min(self.costs))
-            print(np.max(self.costs))
+                                                                           self.PIXELS,
+                                                                           self.PIXELS)))
             self.learned_maps.append(np.log(self.costs))
             print("step size: ", get_stepsize(learch_step, self._learning_rate,
                                               self._stepsize_scalar))
-
-            # if learch_step != 2:
-            #    self.costmaps.update_targets(self.costs, self.workspaces)
 
         return np.log(self.costs), _, learch_step
 
