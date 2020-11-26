@@ -2,13 +2,13 @@
 
 ### Installation:
 
-Satisfy all the requirements in requirenments.txt:
+Satisfy all the requirements in requirements.txt:
 
-    pip install -r requirements.txt
+    pip3 install -r requirements.txt
    
 The pyrieef project should now be inside a folder named src.
 
-Execute file:
+Execute file with Python 3.5:
 
-    python learch.py
+    python3 plots/plot_learning.py
 

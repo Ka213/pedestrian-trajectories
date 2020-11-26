@@ -2,12 +2,13 @@
 
 -e git+https://github.com/humans-to-robots-motion/pyrieef.git#egg=pyrieef
 
-numpy>=1.12.0
+numpy>=1.12.1
 scipy
 h5py
 matplotlib
 tensorflow==1.5.0
 scikit-image
+scikit-learn
 tqdm
 pyglet
 six
