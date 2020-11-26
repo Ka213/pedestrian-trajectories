@@ -5,33 +5,42 @@ from my_utils.environment import *
 from my_utils.my_utils import *
 
 show_result = 'SHOW'
-nb_points = 40
-nb_rbfs = 5
-sigma = 0.1
-nb_samples = 200
-N = 8
+loss_augmentation = False
+nb_points = 28
+nb_rbfs = 4
+sigma = 0.15
+nb_samples = 3
+N = 45
 
 workspace = Workspace()
 np.random.seed(1)
 # Create random costmap
-w, original_costmap, starts, targets, paths, centers = \
-    create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace)
-Phi = get_phi(nb_points, centers, sigma, workspace)
-P = get_transition_probabilities(original_costmap)
-# Calculate state frequency
-D = get_expected_edge_frequency(P, original_costmap, N, nb_points,
-                                targets, paths, workspace)
-
-show(D, workspace, show_result, starts=starts, targets=targets, paths=paths,
-     directory=home + '/../results/figures/stateFrequency.png',
-     title="expected state frequeny")
-
-D = - D - np.min(-D)
-f = get_costmap(Phi, D)
+w, costs, starts, targets, paths, centers = \
+    create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples, workspace)
 
 phi = get_phi(nb_points, centers, sigma, workspace)
-costmap = get_costmap(phi, f)
-show_multiple([map], [original_costmap], workspace, show_result,
+
+# Calculate state frequency
+# compute expected state frequency of ground truth costmap
+d = get_expected_edge_frequency(costs, N, nb_points, starts, targets,
+                                workspace)
+
+f_expected = np.tensordot(phi, d)
+costmap1 = get_costmap(phi, - f_expected - np.min(- f_expected))
+costmap2 = get_costmap(phi, f_expected)
+
+show_3D(d, workspace, show_result, starts=starts, targets=targets, paths=paths,
+        centers=centers)
+show_3D(costmap2, workspace, show_result, starts=starts, targets=targets,
+        paths=paths, centers=centers)
+show(costs, workspace, show_result, starts=starts, targets=targets, paths=paths,
+     directory=home + '/../results/figures/expectedStateFrequency_gt.pdf')
+show(d, workspace, show_result, starts=starts, targets=targets, paths=paths,
+     directory=home + '/../results/figures/expectedStateFrequency.pdf')
+show(costmap2, workspace, show_result, starts=starts, targets=targets,
+     paths=paths, centers=centers, weights=np.ones(nb_rbfs ** 2),
+     directory=home + '/../results/figures/stateFrequencyCostmap.pdf')
+show_multiple([d, costmap1, costmap2], [costs], workspace, show_result,
               # starts=starts, targets=targets, paths=paths,
-              directory=home + '/../results/figures/stateFrequencyCostmap.png',
-              title='expected state frequency map')
+              directory=home + '/../results/figures/stateFrequency_multi.pdf')  # ,
+# title='expected state frequency map')

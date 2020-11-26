@@ -3,17 +3,17 @@ import common_import
 from my_utils.output_costmap import *
 from pyrieef.geometry.workspace import *
 
-show_result = 'SAVE'
+show_result = 'SHOW'
 
-filename = 'learch_100samples'
-
+filename = 'maxEnt'
+directory = home + '/../results/learning/'
 workspace = Workspace()
 
-w, costmap, starts, targets, paths, centers = load_environment("environment0")
-maps, optimal_paths, _, starts, targets, paths = \
-    get_results(home + '/../results/learning/' + filename + '.npz')
+maps, ex_paths, w_t, starts, targets, paths = get_results(directory +
+                                                          filename +
+                                                          '.npz')
 
 # Output animated 3D plot
-animated_plot(maps, workspace, show_result,  # starts=starts, targets=targets,
-              # paths=paths, #optimal_paths=optimal_paths,
-              directory=home + '/../results/animations/' + filename)
+animated_plot(maps, workspace, show_result, starts=starts, targets=targets,
+              ex_paths=ex_paths, directory=home + '/../results/animations/' +
+                                           filename)
