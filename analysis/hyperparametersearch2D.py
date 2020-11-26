@@ -53,7 +53,7 @@ for j in range(nb_runs):
     print("run: ", j)
     np.random.seed(j)
 
-    w, original_costmap, starts, targets, paths, centers = \
+    w, costmap_gt, starts, targets, paths, centers = \
         create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
                         workspace)
     file.write(str(w) + '\n')
@@ -106,7 +106,7 @@ for j in range(nb_runs):
                 x = int(i / parameter_step) - param_lower_bound
                 y = int(k / parameter_step) - param_lower_bound
                 if learning == 'learch':
-                    loss[j, x, y] = get_learch_loss(original_costmap,
+                    loss[j, x, y] = get_learch_loss(costmap_gt,
                                                     optimal_path[-1], paths,
                                                     nb_samples,
                                                     l._l2_regularizer,

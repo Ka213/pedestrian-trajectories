@@ -24,35 +24,35 @@ def learch(x):
     workspace = Workspace()
 
     l = Learch2D(nb_points, nb_rbfs, sigma, workspace)
-    original_costmaps = []
-    original_starts = []
-    original_targets = []
-    original_paths = []
+    costs = []
+    starts_gt = []
+    targets_gt = []
+    demonstrations = []
     for i in range(nb_env):
         # np.random.seed(i)
         # Create random costmap
-        w, original_costmap, starts, targets, paths, centers = \
+        w, costmap_gt, starts, targets, paths, centers = \
             create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples,
                                     workspace)
-        original_costmaps.append(original_costmap)
-        original_paths.append(paths)
-        original_starts.append(starts)
-        original_targets.append(targets)
+        costs.append(costmap_gt)
+        demonstrations.append(paths)
+        starts_gt.append(starts)
+        targets_gt.append(targets)
         # Learn costmap
         l.add_environment(centers, paths, starts, targets)
 
     l._learning_rate = x["learning rate"]
     l._stepsize_scalar = x["step size scalar"]
     for _, i in enumerate(l.instances):
-        i._loss_scalar = x["loss scalr"]
+        i._loss_scalar = x["loss scalar"]
         i._loss_stddev = x["loss stddev"]
         i._l2_regularizer = x["l2 regularizer"]
         i._proximal_regularizer = x["proximal regularizer"]
 
-    maps, optimal_paths, w_t, step = l.solve()
+    maps, ex_paths, w_t, step = l.solve()
 
-    loss = - np.average(get_learch_loss(original_costmaps, optimal_paths,
-                                        original_paths, nb_samples * nb_env))
+    loss = - np.average(get_learch_loss(costs, ex_paths, demonstrations,
+                                        nb_samples * nb_env))
     if loss < 0:
         loss = sys.maxsize
     return loss
@@ -81,7 +81,7 @@ cs.add_hyperparameters([loss_scalar, loss_stddev, learning_rate,
 # Scenario object
 scenario = Scenario({"run_obj": "quality",  # we optimize quality
                      # (alternatively runtime)
-                     "runcount-limit": 50,
+                     "runcount-limit": 10,
                      "cs": cs,  # configuration space
                      "deterministic": "false",
                      "shared_model": True,

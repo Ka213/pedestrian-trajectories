@@ -59,7 +59,7 @@ for j in range(nb_runs):
     print("run: ", j)
     np.random.seed(j)
 
-    w, original_costmap, starts, targets, paths, centers = \
+    w, costmap_gt, starts, targets, paths, centers = \
         create_rand_env(nb_points, nb_rbfs, sigma, nb_samples,
                         workspace)
     file.write(str(w) + '\n')
@@ -114,7 +114,7 @@ for j in range(nb_runs):
 
             # Calculate loss
             if learning == 'learch':
-                loss[j, n] = get_learch_loss(original_costmap, optimal_path[-1],
+                loss[j, n] = get_learch_loss(costmap_gt, optimal_path[-1],
                                              paths, nb_samples, l._l2_regularizer,
                                              l._proximal_regularizer, w_t[-1])
             elif learning == 'maxEnt':
@@ -138,7 +138,7 @@ plot_avg_over_runs(x, nb_runs, directory=directory + 'search_{}_{}l_{}u.png'
                    loss=loss)
 
 # Show learned costmaps for different number of samples
-show_multiple(learned_maps, original_costmap, workspace, show_result,
+show_multiple(learned_maps, costmap_gt, workspace, show_result,
               directory=directory + 'costmaps_search_{}.png'.format(param))
 
 duration = time.time() - t
