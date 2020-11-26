@@ -7,12 +7,13 @@ from pyrieef.geometry.workspace import *
 
 def get_learch_target(costmap, paths, starts, targets, loss_stddev, loss_scalar,
                       workspace):
+    """ Create target CNN maps for Deep-LEARCH"""
     map = np.zeros(costmap.shape)
     # Push down on demonstrations
     for i, trajectory in enumerate(paths):
         x1 = np.asarray(trajectory)[:, 0]
         x2 = np.asarray(trajectory)[:, 1]
-        map[x1, x2] += - 1  # + costmap[x1, x2]
+        map[x1, x2] += - 1
 
     # Push up on optimal path
     op = []
@@ -25,11 +26,12 @@ def get_learch_target(costmap, paths, starts, targets, loss_stddev, loss_scalar,
         op.append(trajectory)
         x1 = np.asarray(trajectory)[:, 0]
         x2 = np.asarray(trajectory)[:, 1]
-        map[x1, x2] += 1  # + costmap[x1, x2]
+        map[x1, x2] += 1
     return map, op
 
 
 def get_maxEnt_target(costmap, N, paths, starts, targets, workspace):
+    """ Create target CNN maps with feature matching """
     try:
         d = get_expected_edge_frequency(costmap, N, costmap.shape[0], starts,
                                         targets, workspace)
@@ -43,8 +45,8 @@ def get_maxEnt_target(costmap, N, paths, starts, targets, workspace):
             phi[i * costmap.shape[0] + j, i, j] = 1
     f_empirical = get_empirical_feature_count(paths, phi)
     f_expected = np.tensordot(phi, d)
-    f_empirical = f_empirical / f_empirical.sum()
-    f_expected = f_expected / f_expected.sum()
+    # f_empirical = f_empirical / f_empirical.sum()
+    # f_expected = f_expected / f_expected.sum()
     f = f_empirical - f_expected
     f = - f - np.min(- f)
     map = get_costmap(phi, f)
@@ -52,46 +54,46 @@ def get_maxEnt_target(costmap, N, paths, starts, targets, workspace):
 
 
 def get_esf_target(costmap, N, paths, starts, targets, workspace):
+    """ Create target CNN maps using the Deep-LEARCH variant
+        without loss augmentation
+    """
     # Push up on state frequency
-    occ = get_expected_edge_frequency(costmap, N, costmap.shape[0], starts,
+    esf = get_expected_edge_frequency(costmap, N, costmap.shape[0], starts,
                                       targets, workspace)
     # Push down on demonstrations
     map = np.zeros(costmap.shape)
     for i, trajectory in enumerate(paths):
         map -= hamming_loss_map(trajectory, costmap.shape[0])
-    # Scaleing
-    occ = occ / occ.sum() * - map.sum()
-    map = occ + map
+    # Scaling
+    esf = esf / esf.sum() * - map.sum()
+    map = esf + map
     return map
 
 
 def get_loss_aug_esf_target(costmap, paths, starts, targets, loss_scalar,
                             loss_stddev, N, workspace):
+    """ Create target CNN maps for the Deep-LEARCH variant """
     map = np.zeros(costmap.shape)
     esf = np.zeros(costmap.shape)
     # Push down on demonstrations
     for i, trajectory in enumerate(paths):
         map -= hamming_loss_map(trajectory, costmap.shape[0])
-        # _, _, p = plan_paths(1, costmap, workspace, starts=[starts[i]],
-        #                     targets=[targets[i]])
+
         loss_augmentation = scaled_hamming_loss_map(trajectory, costmap.shape[0],
                                                     loss_scalar, loss_stddev)
-
         # Push up on loss augmented state frequency
         try:
             esf += get_expected_edge_frequency(costmap - loss_augmentation, N,
                                                costmap.shape[0], starts, targets,
                                                workspace)
         except Exception as e:
-            print("Exception happened while computing expected state frequencies")
+            print("Exception happened while computing "
+                  "expected state frequencies")
             print(e)
             raise
-    # Scaleing
+    # Scaling
     esf = esf / esf.sum() * - map.sum()
     map = esf + map
+
     return map
 
-
-def get_avg_learch_esf_target():
-    # TODO implement
-    print("please implement")

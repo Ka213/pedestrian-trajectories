@@ -16,7 +16,7 @@
 # PERFORMANCE OF THIS SOFTWARE.
 #
 #                                        Jim Mainprice on Sunday June 13 2018
-
+# - modified
 
 from common_import import *
 
@@ -33,8 +33,7 @@ from tqdm import tqdm
 from numpy.testing import assert_allclose
 import itertools
 from my_utils.environment import *
-from nn.visualize_data_sdf import *
-from nn.my_demonstrations import *
+from pyrieef.learning.visualize_data import *
 
 
 def samplerandpt(lims):
@@ -196,7 +195,7 @@ def random_environments(opt):
                 # Needs states in Nx2 format
                 [occ, sdf, cost] = grids(workspace, grid_to_world, epsilon)
                 datasets[k] = np.array([occ, sdf, cost])
-
+                # Compute simple path
                 starts, targets, paths = plan_paths(nb_samples, cost, workspace)
 
                 if save_workspace:
@@ -214,7 +213,7 @@ def random_environments(opt):
                     dataep[k] = np.array([starts, targets])
 
                 if opt.display:
-                    draw_grids([occ, sdf, cost], lims)
+                    draw_grids([occ, sdf, cost])
                 break
         else:
             print('[OBJS] Reached max number of tries. Restarting run...')

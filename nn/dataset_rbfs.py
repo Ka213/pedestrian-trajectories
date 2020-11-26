@@ -16,23 +16,21 @@
 # PERFORMANCE OF THIS SOFTWARE.
 #
 #                                        Jim Mainprice on Sunday June 13 2018
+# - modified
 
 from common_import import *
-import numpy as np
 
 from my_utils.environment import *
 
 driectory = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, driectory + os.sep + "..")
 import h5py
-import os
-from pyrieef.utils import *
 from pyrieef.utils.misc import *
-import numpy as np
+from pyrieef.utils import *
 from pyrieef.geometry.workspace import *
 from pyrieef.motion.trajectory import Trajectory
 from tqdm import tqdm
-
+import numpy as np
 
 # TODO write some import test
 
@@ -222,7 +220,7 @@ def load_trajectories_from_file(filename='trajectories_1k_small.hdf5'):
 def get_yaml_options():
     import yaml
     directory = learning_data_dir()
-    filename = directory + os.sep + "synthetic_data.yaml"
+    filename = directory + os.sep + "synthetic_data_rbfs.yaml"
     with open(filename, 'r') as stream:
         try:
             options_data = yaml.load(stream)
@@ -269,8 +267,7 @@ class CostmapDataset(object):
             starts = workspace[i].starts
             targets = workspace[i].targets
             costmap = costs[i]
-            map = costmap - costmap.min()
-            _, _, paths = plan_paths(len(demonstrations), map, Workspace(),
+            _, _, paths = plan_paths(len(demonstrations), costmap, Workspace(),
                                      starts=starts, targets=targets)
             target = np.zeros(costmap.shape)
             for demo, path in zip(demonstrations, paths):

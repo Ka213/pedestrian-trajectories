@@ -16,7 +16,7 @@
 # PERFORMANCE OF THIS SOFTWARE.
 #
 #                                        Jim Mainprice on Sunday June 13 2018
-
+# - modified
 
 from common_import import *
 
@@ -268,12 +268,12 @@ class CostmapDataset(object):
     def epochs_completed(self):
         return self._epochs_completed
 
-    def create_target(self, learning, workspace, costs, loss_stddev, loss_scalar, N,
-                      workspace_box, i):
-        print("costs: ", i)
-        demonstrations = workspace[i].demonstrations
-        starts = workspace[i].starts
-        targets = workspace[i].targets
+    def create_target(self, learning, workspace, costs, loss_stddev, loss_scalar,
+                      N, workspace_box, nb_samples, i):
+        # print("costs: ", i)
+        demonstrations = workspace[i].demonstrations[:nb_samples]
+        starts = workspace[i].starts[:nb_samples]
+        targets = workspace[i].targets[:nb_samples]
         costmap = costs[i]
 
         if learning == 'learch':
@@ -291,13 +291,10 @@ class CostmapDataset(object):
             map = get_loss_aug_esf_target(costmap, demonstrations, starts,
                                           targets, loss_scalar, loss_stddev,
                                           N, workspace_box)
-        elif learning == 'avg_esf_learch':
-            map = get_avg_learch_esf_target()
-        # pbar.update(1)
         return map.reshape(-1)
 
     def update_targets(self, costs, workspace, learning, loss_scalar,
-                       loss_stddev, N):
+                       loss_stddev, N, nb_samples):
 
         print("update target costmaps")
         box = EnvBox()
@@ -330,13 +327,14 @@ class CostmapDataset(object):
                                                            costs, loss_stddev,
                                                            loss_scalar, N,
                                                            workspace_box,
-                                                           i)
+                                                           nb_samples, i)
                 pbar.update(1)
             for j in range(len(self.test_targets)):
                 self.test_targets[j] = self.create_target(learning, workspace,
                                                           costs, loss_stddev,
                                                           loss_scalar, N,
                                                           workspace_box,
+                                                          nb_samples,
                                                           j + self._num_examples)
                 pbar.update(1)
         pbar.close()
@@ -346,6 +344,7 @@ class CostmapDataset(object):
     def reshape_data_to_tensors(self):
 
         def reshape_data_to_tensor(data):
+            print(data.shape)
             return data.reshape(data.shape[0], data.shape[1] * data.shape[2])
 
         self.train_inputs = reshape_data_to_tensor(self.train_inputs)

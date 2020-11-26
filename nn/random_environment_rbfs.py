@@ -16,7 +16,7 @@
 # PERFORMANCE OF THIS SOFTWARE.
 #
 #                                        Jim Mainprice on Sunday June 13 2018
-
+# - modified
 
 from common_import import *
 
@@ -31,7 +31,7 @@ from pyrieef.utils.misc import *
 from math import *
 from random import *
 import optparse
-from nn import my_dataset
+from nn import dataset_rbfs
 from tqdm import tqdm
 from numpy.testing import assert_allclose
 import itertools
@@ -172,18 +172,12 @@ def random_environments(opt):
             map, op = get_learch_target(map, paths, starts, targets, loss_stddev,
                                         loss_scalar)
         elif algorithm == 'maxEnt':
-            map = get_maxEnt_target(map, N, paths, starts, targets, phi)
+            map, _, _ = get_maxEnt_target(map, N, paths, starts, targets, phi)
         elif algorithm == 'occ':
             map = get_esf_target(map, N, paths, starts, targets)
         elif algorithm == 'loss_aug_occ':
-            map = get_loss_aug_est_target(map, paths, starts, targets, loss_scalar,
+            map = get_loss_aug_esf_target(map, paths, starts, targets, loss_scalar,
                                           loss_stddev, N)
-        elif algorithm == 'occ_learch':
-            map = get_avg_learch_esf_target()
-        # elif algorithm == 'test':
-        #    map = original_costmap
-        elif algorithm == 'test_exp':
-            map = get_costmap(phi, np.exp(w))
 
         occ = original_costmap >= 0.6
         onemap = get_costmap(phi, np.ones(nb_rbfs ** 2))
@@ -219,12 +213,12 @@ def random_environments(opt):
 
 
 def get_dataset_id(data_id):
-    options_data = my_dataset.get_yaml_options()
+    options_data = dataset_rbfs.get_yaml_options()
     options = dict_to_object(options_data[data_id])
     filename = options.filename + "." + options.type
-    filepath = my_dataset.learning_data_dir() + os.sep + filename
+    filepath = dataset_rbfs.learning_data_dir() + os.sep + filename
     if os.path.exists(filepath) and os.path.isfile(filepath):
-        data = my_dataset.CostmapDataset(filename)
+        data = dataset_rbfs.CostmapDataset(filename)
         numtrain = data.train_inputs.shape[0]
         numtest = data.test_inputs.shape[0]
         numdatasets = numtrain + numtest
@@ -240,12 +234,12 @@ def get_dataset_id(data_id):
         return data
     else:
         datasets, workspaces, demonstrations, ep = random_environments(options)
-        my_dataset.write_dictionary_to_file(datasets, filename)
-        my_dataset.write_dictionary_to_file(
+        dataset_rbfs.write_dictionary_to_file(datasets, filename)
+        dataset_rbfs.write_dictionary_to_file(
             workspaces, options.workspaces + "." + options.type)
-        my_dataset.save_paths_to_file(demonstrations, options.trajectories +
-                                      "." + options.type)
-        my_dataset.write_data_to_file(ep, options.endpoints + "." + options.type)
+        dataset_rbfs.save_paths_to_file(demonstrations, options.trajectories +
+                                        "." + options.type)
+        dataset_rbfs.write_data_to_file(ep, options.endpoints + "." + options.type)
         return get_dataset_id(data_id)
 
 
@@ -351,7 +345,7 @@ if __name__ == '__main__':
     parser = RandomEnvironmentOptions()
     options = parser.get_options()
     dataset_paramerters = dict_to_object(
-        my_dataset.get_yaml_options()[options.dataset_id])
+        dataset_rbfs.get_yaml_options()[options.dataset_id])
     remove_file_if_exists("data/" + dataset_paramerters.filename + ".hdf5")
     remove_file_if_exists("data/" + dataset_paramerters.workspaces + ".hdf5")
     get_dataset_id(options.dataset_id)
