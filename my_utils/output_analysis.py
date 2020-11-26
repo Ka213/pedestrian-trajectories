@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 def plot_avg_over_runs(x, nb_runs, directory, loss=None, time=None,
                        nb_steps=None, prediction_time=None):
-    """ Plot the given measurements over different number of samples,
+    """ Plot the given loss over different number of demonstrations,
         average over seeds
     """
     fig = plt.figure()
@@ -117,6 +117,7 @@ def plot_data(show_image, directory, directoryToSave=None):
 
 
 def add_subplot_plot(ax, x, y, name):
+    """ create subplot """
     # ax.rc('axes', prop_cycle=(cycler('color', ['r', 'g', 'b', 'y'])))
     for x_i, y_i, name_i in zip(x, y, name):
         y_i = np.vstack(y_i)
@@ -130,7 +131,7 @@ def add_subplot_plot(ax, x, y, name):
 def compare_learning(directories, directory, names=None, title=None,
                      single=False, x_label='# of demonstrations used per '
                                            'environment'):
-    """ plot results different predictions into the same graph """
+    """ plot results of different predictions into the same graph """
     l_x = []
     l_test_nll = []
     l_training_nll = []
@@ -166,7 +167,7 @@ def compare_learning(directories, directory, names=None, title=None,
 
         if names is None:
             l_name.append(d.split('/')[-2])
-    # Plot each measurement in one graph
+    # Plot each loss in one graph
     rows = 7
     cols = 2
     axes = []
@@ -189,93 +190,103 @@ def compare_learning(directories, directory, names=None, title=None,
 
     if title is not None:
         plt.suptitle(title, fontsize=20, y=1)
+    if title != 'NN':
+        loc = 'upper right'
+    else:
+        loc = 'lower left'
 
     ax = axes[0]
     add_subplot_plot(ax, l_x, l_training_loss_l, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('Learch training loss')
+    ax.set_ylabel('LEARCH training loss')
     ax.legend(loc="lower right")
-    ax.set_title("Learch training loss")
+    # ax.set_title("Learch training loss")
     ax.set_ylim([-1, 0.1])
 
     ax = axes[1]
     add_subplot_plot(ax, l_x, l_test_loss_l, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('Learch test loss')
+    ax.set_ylabel('LEARCH test loss')
     ax.legend(loc="lower right")
-    ax.set_title("Learch test loss")
-    ax.set_ylim([-0.3, 0.1])
+    # ax.set_title("Learch test loss")
+    ax.set_ylim([-1, 0.1])
 
     ax = axes[2]
     add_subplot_plot(ax, l_x, l_training_loss_m, l_name)
     ax.set_xlabel(x_label)
     ax.set_ylabel('maximum entropy training loss')
-    ax.legend(loc="upper right")
-    ax.set_title("maximum entropy training loss")
-    ax.set_ylim([0, 10])
+    ax.legend(loc=loc)
+    # ax.set_title("maximum entropy training loss")
+    ax.set_ylim([0, 15])
 
     ax = axes[3]
     add_subplot_plot(ax, l_x, l_test_loss_m, l_name)
     ax.set_xlabel(x_label)
     ax.set_ylabel('maximum entropy test loss')
-    ax.legend(loc="upper right")
-    ax.set_title("maximum entropy test loss")
-    ax.set_ylim([0, 10])
+    ax.legend(loc=loc)
+    # ax.set_title("maximum entropy test loss")
+    ax.set_ylim([0, 15])
 
     ax = axes[4]
     add_subplot_plot(ax, l_x, l_training_edt, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('training euclidean distance transform')
-    ax.legend(loc="upper right")
-    ax.set_title("training euclidean distance transform")
+    ax.set_ylabel('euclidean distance transform training loss')
+    ax.legend(loc=loc)
+    # ax.set_title("training euclidean distance transform")
     ax.set_ylim([0, 2])
 
     ax = axes[5]
     add_subplot_plot(ax, l_x, l_test_edt, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('test euclidean distance transform')
-    ax.legend(loc="upper right")
-    ax.set_title("test euclidean distance transform")
+    ax.set_ylabel('euclidean distance transform test loss')
+    ax.legend(loc=loc)
+    # ax.set_title("test euclidean distance transform")
     ax.set_ylim([0, 2])
 
     ax = axes[6]
     add_subplot_plot(ax, l_x, l_training_nll, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('training negative log likelihood')
-    ax.legend(loc="upper right")
-    ax.set_title("training NLL")
-    ax.set_ylim([0, 2])
+    ax.set_ylabel('negative log likelihood training loss')
+    ax.legend(loc=loc)
+    # ax.set_title("training NLL")
+    ax.set_ylim([0, 1.5])
 
     ax = axes[7]
     add_subplot_plot(ax, l_x, l_test_nll, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('test negative log likelihood')
-    ax.legend(loc="upper right")
-    ax.set_title("test NLL")
-    ax.set_ylim([0, 2])
+    ax.set_ylabel('negative log likelihood test loss')
+    ax.legend(loc=loc)
+    # ax.set_title("test NLL")
+    ax.set_ylim([0, 1.5])
 
     ax = axes[8]
     add_subplot_plot(ax, l_x, l_training_costs, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('value difference of the costmaps')
+    ax.set_ylabel('costmap difference training loss')
     ax.legend(loc="upper right")
-    ax.set_title("training costmap difference")
-    ax.set_ylim([0, 0.5])
+    # ax.set_title("training costmap difference")
+    if title == 'NN':
+        ax.set_ylim([0, 2])
+    else:
+        ax.set_ylim([0, 0.5])
 
     ax = axes[9]
     add_subplot_plot(ax, l_x, l_test_costs, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('value difference of the costmaps')
+    ax.set_ylabel('costmap difference test loss')
     ax.legend(loc="upper right")
-    ax.set_title("test costmap difference")
-    ax.set_ylim([0, 0.5])
+    # ax.set_title("test costmap difference")
+    if title == 'NN':
+        ax.set_ylim([0, 2])
+    else:
+        ax.set_ylim([0, 0.5])
 
     ax = axes[10]
     add_subplot_plot(ax, l_x, l_learning_time, l_name)
     ax.set_xlabel(x_label)
     ax.set_ylabel('learning time in sec')
     ax.legend(loc="upper right")
-    ax.set_title("learning time")
+    # ax.set_title("learning time")
     # ax.set_ylim([0, 1000])
 
     ax = axes[11]
@@ -283,16 +294,17 @@ def compare_learning(directories, directory, names=None, title=None,
     ax.set_xlabel(x_label)
     ax.set_ylabel('inference time in sec')
     ax.legend(loc="upper right")
-    ax.set_title("inference time")
+    # ax.set_title("inference time")
     # ax.set_ylim([0, 200])
 
     ax = axes[12]
     add_subplot_plot(ax, l_x, l_nb_steps, l_name)
     ax.set_xlabel(x_label)
-    ax.set_ylabel('iteration steps')
+    ax.set_ylabel('number of iteration steps')
     ax.legend(loc="upper right")
-    ax.set_title("iteration steps")
+    # ax.set_title("iteration steps")
     # ax.set_ylim([0, 60])
+    # Output the graphs either in one file or each one in a single file
     if single:
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -319,4 +331,6 @@ def plot_loss_fix_nbSamples(error, nb_samples, nb_runs, directory):
     plt.savefig(directory)
 
 
+#FONTSIZE = 14
 cmap = plt.get_cmap('viridis')
+#plt.rcParams.update({'font.size': FONTSIZE})

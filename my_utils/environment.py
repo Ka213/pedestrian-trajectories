@@ -36,14 +36,14 @@ def get_costmap(phi, w):
 
 def create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace,
                     starts=None, targets=None):
-    """ Returns a random environment """
+    """ Returns a random environment with centers fixed on the grid """
     # Create costmap with rbfs
     w = np.random.random(nb_rbfs ** 2)
     centers = workspace.box.meshgrid_points(nb_rbfs)
     phi = get_phi(nb_points, centers, sigma, workspace)
     costmap = get_costmap(phi, w)
 
-    # Plan example trajectories
+    # Plan demonstrations
     starts, targets, paths = plan_paths(nb_samples, costmap, workspace,
                                         starts=starts, targets=targets)
 
@@ -52,21 +52,27 @@ def create_rand_env(nb_points, nb_rbfs, sigma, nb_samples, workspace,
 
 def create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples, workspace,
                             starts=None, targets=None):
-    """ Returns a random environment """
+    """ Returns a random environment
+        with centers sampled randomly on the grid
+    """
     # Create costmap with rbfs
-    # w = [0.5488135, 0.71518937, 0.60276338, 0.54488318, 0.4236548, 0.64589411,
-    #     0.43758721, 0.891773, 0.96366276, 0.38344152, 0.79172504, 0.52889492,
-    #     0.56804456, 0.92559664, 0.07103606, 0.0871293, 0.0202184, 0.83261985,
-    #     0.77815675, 0.87001215, 0.97861834, 0.79915856, 0.46147936, 0.78052918,
-    #    0.11827443]
-    w = np.random.random(nb_rbfs ** 2)
+    # Choose one random weight vector for a set of environments
+    w = [0.52772027, 0.95483682, 0.72599399, 0.42943323, 0.79029455,
+         0.65460276, 0.70879042, 0.13557593, 0.84783406, 0.64606627,
+         0.66291025, 0.78950711, 0.82910369, 0.46258555, 0.69633292,
+         0.07977671, 0.45339094, 0.6181216, 0.26980916, 0.30911578,
+         0.69331897, 0.71134478, 0.23636594, 0.65400106, 0.77278615]
+    w = w[:nb_rbfs ** 2]
+    # w = np.random.random(nb_rbfs ** 2)
+    # Sample centers
     centers = []
     for i in range(nb_rbfs ** 2):
         centers.append(sample_collision_free(workspace))
+    # Create costmap
     phi = get_phi(nb_points, centers, sigma, workspace)
     costmap = get_costmap(phi, w)
 
-    # Plan example trajectories
+    # Plan demonstrations
     starts, targets, paths = plan_paths(nb_samples, costmap, workspace,
                                         starts=starts, targets=targets)
 
@@ -75,7 +81,7 @@ def create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples, workspace,
 
 def plan_paths(nb_samples, costmap, workspace, starts=None, targets=None,
                average_cost=False):
-    """ Plan example trajectories
+    """ Plan path with dijkstra
         either with random or fixed start and target state
     """
     # make costmap positive
@@ -86,13 +92,13 @@ def plan_paths(nb_samples, costmap, workspace, starts=None, targets=None,
     pixel_map = workspace.pixel_map(costmap.shape[0])
 
     paths = []
-    # Choose starts of the trajectory randomly
+    # Choose starts of the path randomly
     if starts is None:
         starts = []
         for i in range(nb_samples):
             s_w = sample_collision_free(workspace)
             starts.append(s_w)
-    # Choose targets of the trajectory randomly
+    # Choose targets of the path randomly
     if targets is None:
         targets = []
         for i in range(nb_samples):
@@ -103,7 +109,6 @@ def plan_paths(nb_samples, costmap, workspace, starts=None, targets=None,
         s = pixel_map.world_to_grid(s_w)
         t = pixel_map.world_to_grid(t_w)
         try:
-            # print("planning...")
             time_0 = time.time()
             # Compute the shortest path between the start and the target
             path = converter.dijkstra_on_map(costmap, s[0], s[1], t[0], t[1])
@@ -111,14 +116,16 @@ def plan_paths(nb_samples, costmap, workspace, starts=None, targets=None,
         except Exception as e:
             print("Exception while planning a path")
             print(e)
+            print(costmap.sum(), s[0], s[1], t[0], t[1])
             paths.append([(s[0], s[1])])
             continue
-        # print("took t : {} sec.".format(time.time() - time_0))
+    # print("path planning took t : {} sec.".format(time.time() - time_0))
 
     return starts, targets, paths
 
 
-'''# For environment created by pixel permutation
+'''
+# For environment created by pixel permutation
 def get_phi(nb_points, perm, sigma, workspace):
     """ Returns the permutation matrix """
     phi = perm.reshape((len(perm), nb_points, nb_points))
@@ -129,10 +136,11 @@ def get_costmap(p, w):
     """ Returns the costmap """
     costmap = np.tensordot(w, p, axes=1)
     return costmap
-
+'''
 
 def create_rand_pixel_env(nb_points, nb_rbfs, sigma, nb_samples, workspace):
     """ Returns a random environment """
+    # One weight vector for a set of environments
     w = [0.44095047, 0.86059755, 0.16534147, 0.50704906, 0.79370644,
        0.67861966, 0.36662587, 0.57924415, 0.7362189 , 0.53337372,
        0.25348289, 0.44730234, 0.64484374, 0.93707173, 0.27360015,
@@ -215,14 +223,15 @@ def create_rand_pixel_env(nb_points, nb_rbfs, sigma, nb_samples, workspace):
        0.72204997, 0.06876607, 0.33042619, 0.18659513, 0.49725427]
     #w = np.random.random(nb_points ** 2)
     map = np.random.permutation(nb_rbfs ** 2)
+    # create permutation
     p = np.zeros((nb_points ** 2, nb_points ** 2))
     for i, j in enumerate(map):
         p[i, j] = 1
+    # Compute costmap
     phi = get_phi(nb_points, p, sigma, workspace)
     costmap = get_costmap(phi, w)
 
-    # Plan example trajectories
+    # Plan demonstrations
     starts, targets, paths = plan_paths(nb_samples, costmap, workspace)
 
     return w, costmap, starts, targets, paths, p
-'''

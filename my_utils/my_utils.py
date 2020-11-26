@@ -9,17 +9,17 @@ from pyrieef.geometry.interpolation import *
 from pyrieef.graph.shortest_path import *
 
 
-def get_edt(optimal_trajectory, sample_trajectory, nb_points):
+def get_edt(path_1, path_2, nb_points):
     """ Return the euclidean distance transform
-        of the optimal trajectory to the example trajectory
+        between two paths
     """
     occpancy_map = np.zeros((nb_points, nb_points))
-    x_1 = np.asarray(sample_trajectory)[:, 0]
-    x_2 = np.asarray(sample_trajectory)[:, 1]
+    x_1 = np.asarray(path_2)[:, 0]
+    x_2 = np.asarray(path_2)[:, 1]
     occpancy_map[x_1, x_2] = 1
     distance = edt(occpancy_map)
-    x_1 = np.asarray(optimal_trajectory)[:, 0]
-    x_2 = np.asarray(optimal_trajectory)[:, 1]
+    x_1 = np.asarray(path_1)[:, 0]
+    x_2 = np.asarray(path_1)[:, 1]
     return np.sum(distance[x_1, x_2])
 
 
@@ -44,6 +44,7 @@ def get_expected_edge_frequency(costmap, N, nb_points, initial_states,
     converter.integral_cost = True
     graph = converter.convert()
 
+    # Get terminal and initial states
     terminal = []
     initials = []
     pixel_map = workspace.pixel_map(nb_points)
@@ -52,6 +53,7 @@ def get_expected_edge_frequency(costmap, N, nb_points, initial_states,
         s = pixel_map.world_to_grid(s)
         terminal.append(converter.graph_id(t[0], t[1]))
         initials.append(converter.graph_id(s[0], s[1]))
+
     # Backward pass
     Z_s = np.zeros((nb_points ** 2))
     Z_s[terminal] = 1
@@ -61,7 +63,7 @@ def get_expected_edge_frequency(costmap, N, nb_points, initial_states,
             for i in range(N):
                 Z_a = np.multiply(np.dot(transition_probability, Z_s.T).
                                   reshape(nb_points ** 2, 8), np.tile(np.exp(
-                    costmap.reshape(nb_points ** 2)), (8, 1)).T)  # TODO add minus?
+                    - costmap.reshape(nb_points ** 2)), (8, 1)).T)
                 Z_s = np.sum(Z_a, axis=1)
             # Local Action Probability Computation
             P = Z_a / np.tile(Z_s, (8, 1)).T
@@ -73,13 +75,13 @@ def get_expected_edge_frequency(costmap, N, nb_points, initial_states,
                 D[:, t + 1] = np.sum(P * np.dot(transition_probability, D[:, t]).
                                      reshape(nb_points ** 2, 8), axis=1)
             # Summing frequencies
-            visitation_frequency = np.sum(D, axis=1).reshape((nb_points, nb_points))
+            visitation_frequency = np.sum(D, axis=1).reshape((nb_points,
+                                                              nb_points))
             return visitation_frequency.T
         except Warning as w:
             print("Warning happend while computing the expected edge frequency")
             print(w)
             raise
-            return np.zeros((nb_points, nb_points))
 
 
 def get_policy(costmap):
@@ -181,12 +183,12 @@ def hamming_loss_map(trajectory, nb_points):
     return occpancy_map
 
 
-def get_edt_loss(nb_points, learned_paths, demonstrations, nb_samples):
+def get_edt_loss(nb_points, example_paths, demonstrations, nb_samples):
     """ Return the loss of the euclidean distance transform
-        between the demonstrations and learned paths
+        between the demonstrations and example paths
     """
-    loss = np.zeros(len(learned_paths))
-    for i, (learned_path, demonstration) in enumerate(zip(learned_paths,
+    loss = np.zeros(len(example_paths))
+    for i, (learned_path, demonstration) in enumerate(zip(example_paths,
                                                           demonstrations)):
         for op, d in zip(learned_path, demonstration):
             loss[i] += get_edt(op, d, nb_points) / len(op)
@@ -198,11 +200,12 @@ def get_overall_loss(learned_maps, original_costmaps):
     """ Return the difference between the costsmaps """
     loss = np.zeros(len(learned_maps))
     for i, (map, costmap) in enumerate(zip(learned_maps, original_costmaps)):
-        map = map - np.min(map)
-        if np.sum(map) != 0:
+        # Normalization
+        if np.sum(map - map.min()) != 0:
+            map = map - np.min(map)
             map = map / np.sum(map)
-        costmap = costmap - np.min(costmap)
-        costmap = costmap / np.sum(costmap)
+            costmap = costmap - np.min(costmap)
+            costmap = costmap / np.sum(costmap)
         loss[i] = np.sum(np.abs(map - costmap))
     return loss
 
