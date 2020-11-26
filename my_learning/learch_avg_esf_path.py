@@ -7,7 +7,7 @@ from my_learning.irl import *
 
 class Learch_Avg_Esf_Path(Learning):
     """ Implements the combined learning of the algorithms
-        LEARCH and maximum Entropy
+        LEARCH and maximum entropy
     """
 
     def __init__(self, nb_points, nb_rbfs, sigma, workspace):
@@ -24,10 +24,10 @@ class Learch_Avg_Esf_Path(Learning):
         self.w = np.exp(np.ones(nb_rbfs ** 2))
 
     def add_environment(self, centers, paths, starts, targets):
-        """ Add an new environment to the LEARCH computation """
+        """ Add an new environment to the computation """
         phi = get_phi(self.nb_points, centers, self.sigma, self.workspace)
-        C = Learch_Avg_Esf_Path.Instance(phi, paths, starts, targets, self.workspace,
-                                         self._l_max)
+        C = Learch_Avg_Esf_Path.Instance(phi, paths, starts, targets,
+                                         self.workspace, self._l_max)
         self.instances.append(C)
 
     def get_regularization(self):
@@ -44,6 +44,7 @@ class Learch_Avg_Esf_Path(Learning):
         """ Do n steps of the new algorithm over multiple environments """
         for step in range(begin, begin + n):
             print("step :", step)
+            # Average the gradient over multiple environments
             w_t = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
                 i.update(self.w)
@@ -55,10 +56,10 @@ class Learch_Avg_Esf_Path(Learning):
                                                   self._stepsize_scalar) * w_t)
             print("step size: ", get_stepsize(step, self._learning_rate,
                                               self._stepsize_scalar))
-        # compute the learned costmaps and their optimal paths
+        # compute the learned costmaps and their example paths
         # for the learned weight w
         costmaps = []
-        optimal_paths = []
+        ex_paths = []
         for _, i in enumerate(self.instances):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
@@ -66,9 +67,9 @@ class Learch_Avg_Esf_Path(Learning):
             _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
-            optimal_paths.append(paths)
+            ex_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, np.log(self.w), step
+        return costmaps, ex_paths, np.log(self.w), step
 
     def solve(self, begin=0):
         """ Compute the new algorithm over multiple environments
@@ -80,6 +81,7 @@ class Learch_Avg_Esf_Path(Learning):
         # Iterate until convergence
         while e > self.convergence:
             print("step :", step)
+            # Average the gradient over multiple environments
             w_t = np.zeros(self.nb_rbfs ** 2)
             for j, i in enumerate(self.instances):
                 i.update(self.w)
@@ -97,10 +99,10 @@ class Learch_Avg_Esf_Path(Learning):
             print("convergence: ", e)
             w_old = copy.deepcopy(self.w)
             step += 1
-        # compute the learned costmaps and their optimal paths
+        # compute the learned costmaps and their example paths
         # for the learned weight w
         costmaps = []
-        optimal_paths = []
+        ex_paths = []
         for _, i in enumerate(self.instances):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
@@ -108,12 +110,12 @@ class Learch_Avg_Esf_Path(Learning):
             _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
-            optimal_paths.append(paths)
+            ex_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, np.log(self.w), step
+        return costmaps, ex_paths, np.log(self.w), step
 
     class Instance(Learning.Instance):
-        """ Implements the new algorithm for one environment """
+        """ Implements the algorithm for one environment """
 
         def __init__(self, phi, paths, starts, targets, workspace, l_max):
             Learning.Instance.__init__(self, phi, paths, starts, targets,
@@ -145,18 +147,17 @@ class Learch_Avg_Esf_Path(Learning):
 
 
         def planning(self):
-            """ Compute the optimal path for each start and
-                target state in the expample trajectories
+            """ Compute the example
                 Add the states to the set d where the cost function has to
                 increase/decrease
             """
-            optimal_paths = []
+            ex_paths = []
             for i, (s, t) in enumerate(zip(self.sample_starts,
                                            self.sample_targets)):
                 map = self.costmap - self.loss_map[i]
                 _, _, paths = plan_paths(1, map, self.workspace, starts=[s],
                                          targets=[t])
-                optimal_paths.append(paths[0])
+                ex_paths.append(paths[0])
 
             try:
                 o = get_expected_edge_frequency(self.costmap, self._N,
@@ -167,9 +168,7 @@ class Learch_Avg_Esf_Path(Learning):
             except Exception:
                 raise
 
-            # Add the states of the optimal trajectory to d
-            # The costs should be increased in the states
-            # of the optimal trajectory
+            # Add all states with the expected state frequency to d
             X = np.arange(self.phi.shape[1])
             Y = np.arange(self.phi.shape[2])
             x1, x2 = np.meshgrid(X, Y)
@@ -177,23 +176,24 @@ class Learch_Avg_Esf_Path(Learning):
 
             d2 = np.empty((3, 0))
             d3 = np.empty((3, 0))
-            for i, (trajectory, optimal_path) in enumerate(zip(
-                    self.sample_trajectories, optimal_paths)):
-                # Add the states of the optimal trajectory to d
+            for i, (trajectory, ex_path) in enumerate(zip(
+                    self.sample_trajectories, ex_paths)):
+                # Add the states of the example path to d
                 # The costs should be increased in the states
-                # of the optimal trajectory
-                x1 = np.asarray(np.transpose(optimal_path)[:][0])
-                x2 = np.asarray(np.transpose(optimal_path)[:][1])
+                # of the example path
+                x1 = np.asarray(np.transpose(ex_path)[:][0])
+                x2 = np.asarray(np.transpose(ex_path)[:][1])
                 d_ = np.vstack((x1, x2, np.ones(x1.shape)))
                 d2 = np.hstack((d2, d_))
 
-                # Add the states of the example trajectory to d
+                # Add the states of the demonstration to d
                 # The costs should be decreased in the states
-                # of the example trajectory
+                # of the demonstration
                 x1 = np.asarray(np.transpose(trajectory)[:][0])
                 x2 = np.asarray(np.transpose(trajectory)[:][1])
                 d_ = np.vstack((x1, x2, - np.ones(x1.shape)))
                 d3 = np.hstack((d3, d_))
+            # Scaling
             d1[2] = d1[2] / d1[2].sum() * d2[2].sum()
             d1[2] = d1[2] * self._l_max
             d2[2] = d2[2] * (1 - self._l_max)
@@ -217,7 +217,7 @@ class Learch_Avg_Esf_Path(Learning):
             return w_new
 
         def get_gradient(self):
-            """ Compute one step of the new algorithm """
+            """ Compute one step of the algorithm """
             d = self.planning()
             w_new = self.supervised_learning(d)
             return w_new

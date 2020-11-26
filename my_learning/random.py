@@ -6,26 +6,24 @@ from my_learning.irl import *
 
 
 class Random(Learning):
-    """ Implements the LEARCH algorithm for a 2D squared map """
+    """ Return a random weight vector as solution to a linear cost function """
 
     def __init__(self, nb_points, nb_rbfs, sigma, workspace):
         Learning.__init__(self, nb_points, nb_rbfs, sigma, workspace)
-
+        # Initialize weight randomly
         self.w = np.random.random(self.nb_rbfs ** 2)
 
     def n_steps(self, n, begin=0):
         """ Returns a random vector as weights """
-        # compute the learned costmaps and their optimal paths
-        # for the weight w
-        costmaps, optimal_paths, self.w, n = self.solve()
-        return costmaps, optimal_paths, self.w, n
+        costmaps, ex_paths, self.w, n = self.solve()
+        return costmaps, ex_paths, self.w, n
 
     def solve(self, begin=0):
         """ Returns a random vector as weights """
-        # compute the learned costmaps and their optimal paths
+        # compute the learned costmaps and their example paths
         # for the weight w
         costmaps = []
-        optimal_paths = []
+        ex_paths = []
         for _, i in enumerate(self.instances):
             costmap = get_costmap(i.phi, self.w)
             costmaps.append(costmap)
@@ -33,6 +31,6 @@ class Random(Learning):
             _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
-            optimal_paths.append(paths)
+            ex_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, self.w, 0
+        return costmaps, ex_paths, self.w, 0

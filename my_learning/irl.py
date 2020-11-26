@@ -1,14 +1,13 @@
 import common_import
 
-from abc import abstractmethod
 from my_utils.environment import *
 from my_utils.output_costmap import *
 
 
 class Learning():
-    """ Implements the abstract methods for the learning learning algorithms
+    """ Implements the abstract methods of the algorithms
         for multiple environments
-        returns always the the one vecotor as weight
+        returns always the the one vector as weight
     """
 
     def __init__(self, nb_points, nb_rbfs, sigma, workspace):
@@ -31,10 +30,10 @@ class Learning():
     @abstractmethod
     def n_steps(self, n, begin=0):
         """ Returns a one vector as weights """
-        # compute the learned costmaps and their optimal paths
+        # compute the learned costmaps and their example paths
         # for the weight w
         costmaps = []
-        optimal_paths = []
+        ex_paths = []
         for _, i in enumerate(self.instances):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
@@ -42,9 +41,9 @@ class Learning():
             _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
-            optimal_paths.append(paths)
+            ex_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, np.log(self.w), n
+        return costmaps, ex_paths, np.log(self.w), n
 
     @abstractmethod
     def solve(self, begin=0):
@@ -52,10 +51,10 @@ class Learning():
         # for _, i in enumerate(self.instances):
         #    i.update(self.w)
 
-        # compute the learned costmaps and their optimal paths
+        # compute the learned costmaps and their example paths
         # for the weight w
         costmaps = []
-        optimal_paths = []
+        ex_paths = []
         for _, i in enumerate(self.instances):
             costmap = get_costmap(i.phi, np.log(self.w))
             costmaps.append(costmap)
@@ -63,9 +62,9 @@ class Learning():
             _, _, paths = plan_paths(len(i.sample_trajectories), costmap,
                                      self.workspace, starts=i.sample_starts,
                                      targets=i.sample_targets)
-            optimal_paths.append(paths)
+            ex_paths.append(paths)
             i.optimal_paths.append(paths)
-        return costmaps, optimal_paths, np.log(self.w), 0
+        return costmaps, ex_paths, np.log(self.w), 0
 
     class Instance():
         """ Implements the learning of one environment """
