@@ -1,44 +1,42 @@
 import common_import
-from pyrieef.geometry.workspace import *
-from my_utils.output_costmap import *
+
 from my_learning.max_ent import *
+from my_utils.output_costmap import *
+from pyrieef.geometry.workspace import *
 
 
 def test_maxEnt():
-    nb_points = 40
-    nb_rbfs = 5
-    sigma = 0.1
-    nb_samples = 500
-    nb_env = 1
+    nb_points = 28
+    nb_rbfs = 4
+    sigma = 0.15
+    nb_samples = 50
+    nb_env = 20
 
     workspace = Workspace()
     m = MaxEnt(nb_points, nb_rbfs, sigma, workspace)
-    original_costmaps = []
-    original_starts = []
-    original_targets = []
-    original_paths = []
+    costs = []
+    starts_gt = []
+    targets_gt = []
+    demonstrations = []
     for i in range(nb_env):
         np.random.seed(i)
         # Create random costmap
-        w, original_costmap, starts, targets, paths, centers = \
-            load_environment("environment_sample_centers" + str(i))  # \
-        #    create_random_environment(nb_points, nb_rbfs, sigma, nb_samples, workspace)
-        original_costmaps.append(original_costmap)
-        starts = starts  # [:nb_samples]
-        targets = targets  # [:nb_samples]
-        paths = paths  # [:nb_samples]
-        original_paths.append(paths)
-        original_starts.append(starts)
-        original_targets.append(targets)
+        w, costmap_gt, starts, targets, paths, centers = \
+            create_env_rand_centers(nb_points, nb_rbfs, sigma, nb_samples,
+                                    workspace)
+        costs.append(costmap_gt)
+        demonstrations.append(paths)
+        starts_gt.append(starts)
+        targets_gt.append(targets)
         # Learn costmap
         m.add_environment(centers, paths, starts, targets)
 
-    maps, optimal_paths, w_t, step = m.solve()
+    maps, ex_paths, w_t, step = m.solve()
 
     print("weight difference: ", (np.absolute(w_t - w)).sum())
-    assert (np.absolute(w_t - w)).sum() < nb_rbfs ** 2 * 0.6
+    assert (np.absolute(w_t - w)).sum() < nb_rbfs ** 2 * 0.3
     # Output learned costmaps
-    show_multiple(maps, original_costmaps, workspace, show_result,
+    show_multiple(maps, costs, workspace, show_result,
                   directory=home + '/../figures/maxEnt.png')
 
 
