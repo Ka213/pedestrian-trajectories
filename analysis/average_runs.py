@@ -3,6 +3,7 @@ from common_import import *
 from my_utils.output_analysis import *
 import datetime
 
+# list files to average
 file1 = 'maxEnt_1env_1-20samples_20predictions_[0]'
 file2 = 'maxEnt_1env_1-20samples_20predictions_[1]'
 file3 = 'maxEnt_1env_1-20samples_20predictions_[2]'
@@ -60,6 +61,7 @@ for i, d in enumerate(files):
     l_training_costs[:, i] = l['training_costs']
     l_test_costs[:, i] = l['test_costs']
 
+# define axis for correct standard deviation
 if nb_training == 1:
     a = 2
 else:
@@ -70,6 +72,7 @@ l_training_edt = np.average(l_training_edt, axis=a)
 l_training_nll = np.average(l_training_nll, axis=a)
 l_training_costs = np.average(l_training_costs, axis=a)
 
+# define axis for correct standard deviation
 if nb_test == 1:
     a = 2
 else:

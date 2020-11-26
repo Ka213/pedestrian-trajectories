@@ -8,24 +8,25 @@ from my_learning.learch import *
 from my_learning.learch_loss_aug_esf import *
 from my_learning.learch_esf import *
 from my_learning.learch_avg_esf_path import *
-from my_learning.only_push_down import *
 from my_learning.random import *
 from my_learning.irl import *
-from my_learning.average import *
 from my_utils.output_costmap import *
 from my_utils.output_analysis import *
 
 
 def parallel_task(learning, nb_train, nb_test, range_training_env,
                   range_test_env, workspace, nb_samples):
+    ''' Calculate result for one specific number of demonstrations '''
     nb_points = 28
     nb_rbfs = 4
     sigma = 0.15
+    env_file = "environment_rbfs_28_"
+
     np.random.seed(0)
     print("# demonstrations: ", nb_samples)
 
     learning_time_0 = time.time()
-    # Learn costmap
+
     if learning == 'learch':
         l = Learch2D(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'maxEnt':
@@ -38,69 +39,60 @@ def parallel_task(learning, nb_train, nb_test, range_training_env,
         l = Learch_Esf(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'oneVector':
         l = Learning(nb_points, nb_rbfs, sigma, workspace)
-    elif learning == 'average':
-        l = Average(nb_points, nb_rbfs, sigma, workspace)
     elif learning == 'random':
         l = Random(nb_points, nb_rbfs, sigma, workspace)
-    elif learning == 'onlyPushDown':
-        l = OnlyPushDown(nb_points, nb_rbfs, sigma, workspace)
 
-    original_costmaps = []
-    original_starts = []
-    original_targets = []
-    original_paths = []
+    # Get training samples
+    costs = []
+    starts_gt = []
+    targets_gt = []
+    demonstrations = []
     for k in range_training_env:
-        # file.write("training environment: " + "environment" + str(k) + '\n')
-        w, original_costmap, s, t, p, centers = \
-            load_environment("environment_rbfs_28" + str(k))
-        nb_points, nb_rbfs, sigma, _ = \
-            load_environment_params("environment_rbfs_28" + str(k))
-        original_costmaps.append(original_costmap)
+        w, costmap, s, t, p, centers = load_environment(env_file + str(k))
+        nb_points, nb_rbfs, sigma, _ = load_environment_params(env_file +
+                                                               str(k))
+        costs.append(costmap)
         starts = s[:nb_samples]
         targets = t[:nb_samples]
         paths = p[:nb_samples]
-        original_paths.append(p[:nb_train])
-        original_starts.append(s[:nb_train])
-        original_targets.append(t[:nb_train])
-        # Learn costmap
+        demonstrations.append(p[:nb_train])
+        starts_gt.append(s[:nb_train])
+        targets_gt.append(t[:nb_train])
         l.add_environment(centers, paths, starts, targets)
-
+    # Learn costmap
     learned_maps, _, w_t, step_count = l.solve()
     learning_time = time.time() - learning_time_0
     nb_steps = step_count
-    optimal_paths = []
+    ex_paths = []
     for j, k in enumerate(l.instances):
         _, _, p = plan_paths(nb_train, learned_maps[j] -
                              np.min(learned_maps[j]), workspace,
-                             starts=original_starts[j],
-                             targets=original_targets[j])
-        optimal_paths.append(p)
+                             starts=starts_gt[j],
+                             targets=targets_gt[j])
+        ex_paths.append(p)
 
     # Calculate training loss
-    training_loss_l = get_learch_loss(original_costmaps, optimal_paths,
-                                      original_paths, nb_train)
-    training_loss_m = get_maxEnt_loss(learned_maps, original_paths, nb_train)
-    training_edt = get_edt_loss(nb_points, optimal_paths, original_paths, nb_train)
-    training_costs = get_overall_loss(learned_maps, original_costmaps)
-    training_nll = get_nll(optimal_paths, original_paths, nb_points, nb_train)
+    training_loss_l = get_learch_loss(costs, ex_paths,
+                                      demonstrations, nb_train)
+    training_loss_m = get_maxEnt_loss(learned_maps, demonstrations, nb_train)
+    training_edt = get_edt_loss(nb_points, ex_paths, demonstrations, nb_train)
+    training_costs = get_overall_loss(learned_maps, costs)
+    training_nll = get_nll(ex_paths, demonstrations, nb_points, nb_train)
 
-    # Predict paths
+    # Get Test samples
     prediction_time_0 = time.time()
     predictions = []
-    p_original_maps = []
+    p_costs = []
     p_learned_maps = []
     p_starts = []
     p_targets = []
     p_paths = []
     for k in range_test_env:
-        # Test Environments
-        # file.write("test environment: " + "environment" + str(k) + '\n')
         p_w, p_costmap, s, t, p, p_centers = load_environment(
-            "environment_rbfs_28" + str(k))
-        p_original_maps.append(p_costmap)
-        # Learned Costmap
+            env_file + str(k))
         phi = get_phi(nb_points, p_centers, sigma, workspace)
         costmap = get_costmap(phi, w_t)
+        p_costs.append(p_costmap)
         p_learned_maps.append(costmap)
         p_starts.append(s[- nb_test:])
         p_targets.append(t[- nb_test:])
@@ -111,18 +103,18 @@ def parallel_task(learning, nb_train, nb_test, range_training_env,
     prediction_time = time.time() - prediction_time_0
 
     # Calculate test loss
-    test_loss_l = get_learch_loss(p_original_maps, predictions, p_paths,
+    test_loss_l = get_learch_loss(p_costs, predictions, p_paths,
                                   nb_test)
     test_loss_m = get_maxEnt_loss(p_learned_maps, p_paths, nb_test)
     test_nll = get_nll(predictions, p_paths, nb_points, nb_test)
     test_edt = get_edt_loss(nb_points, predictions, p_paths, nb_test)
-    test_costs = get_overall_loss(p_learned_maps, p_original_maps)
+    test_costs = get_overall_loss(p_learned_maps, p_costs)
 
     if learning == "learch":
         save_learch_params(directory + "/params", l)
     elif learning == "maxEnt":
         save_maxEnt_params(directory + "/params", l)
-    elif learning == "occ":
+    elif learning == "loss_aug_esf":
         save_newAlg_params(directory + "/params", l)
 
     return learning_time, prediction_time, nb_steps, training_loss_l, \
@@ -135,12 +127,12 @@ if __name__ == "__main__":
     # set the learning method to evaluate
     # choose between learch, maxEnt, avg_esf_path, esf, loss_aug_esf
     # oneVector or random
-    learning = 'random'
+    learning = 'learch'
     nb_samples_l = 1
-    nb_samples_u = 20
-    step = 1
-    range_training_env = np.arange(5)
-    range_test_env = np.arange(5, 10)
+    nb_samples_u = 100
+    step = 2
+    range_training_env = np.arange(1)
+    range_test_env = np.arange(10, 15)
     nb_train = 20
     nb_test = 20
     foldername = '{}_{}env_{}-{}samples_{}predictions_{}' \
@@ -175,7 +167,7 @@ if __name__ == "__main__":
     test_costs = np.vstack(np.asarray(result)[:, 12])
 
     pool.close()
-
+    # Output results
     results = directory + '/results.npz'
     np.savez(results, x=x, learning_time=learning_time, prediction_time=
     prediction_time, nb_steps=nb_steps, training_loss_l=training_loss_l,
@@ -184,7 +176,6 @@ if __name__ == "__main__":
              test_loss_l=test_loss_l, test_loss_m=test_loss_m, test_nll=
              test_nll, test_edt=test_edt, test_costs=test_costs)
 
-    # Plot results
     compare_learning([results], directory + '/output.pdf',
                      names=[learning], title=learning)
 
